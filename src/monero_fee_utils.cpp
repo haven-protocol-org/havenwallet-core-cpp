@@ -76,7 +76,8 @@ uint64_t monero_fee_utils::get_upper_transaction_weight_limit(
 	if (upper_transaction_weight_limit__or_0_for_default > 0)
 		return upper_transaction_weight_limit__or_0_for_default;
 	uint64_t full_reward_zone = use_fork_rules_fn(5, 10) ? CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V5 : use_fork_rules_fn(2, 10) ? CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V2 : CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V1;
-	if (use_fork_rules_fn(8, 10))
+	// NEAC : Haven v0.14.1.2 is a mix of v8+v9+v10, but is labelled as v5!
+	if (use_fork_rules_fn(/*8*/5, 10))
 		return full_reward_zone / 2 - CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE;
 	else
 		return full_reward_zone - CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE;
