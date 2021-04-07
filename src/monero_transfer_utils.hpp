@@ -204,7 +204,6 @@ namespace monero_transfer_utils
 		const vector<SpendableOutput> &unspent_outs,
 		uint64_t fee_per_b, // per v8
 		uint64_t fee_quantization_mask,
-		cryptonote::network_type nettype,
 		//
 		optional<uint64_t> passedIn_attemptAt_fee // use this for passing step2 "must-reconstruct" return values back in, i.e. re-entry; when nil, defaults to attempt at network min
 	);

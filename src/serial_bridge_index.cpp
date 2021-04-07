@@ -520,7 +520,6 @@ string serial_bridge::send_step1__prepare_params_for_get_decoys(const string &ar
 		unspent_outs,
 		stoull(json_root.get<string>("fee_per_b")), // per v8
 		stoull(json_root.get<string>("fee_mask")),
-		nettype_from_string(json_root.get<string>("nettype_string")),
 		//
 		optl__passedIn_attemptAt_fee // use this for passing step2 "must-reconstruct" return values back in, i.e. re-entry; when nil, defaults to attempt at network min
 	);

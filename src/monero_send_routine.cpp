@@ -356,7 +356,6 @@ void _reenterable_construct_and_send_tx(
 		args.unspent_outs,
 		args.fee_per_b,
 		args.fee_quantization_mask,
-		args.nettype,
 		//
 		passedIn_attemptAt_fee // use this for passing step2 "must-reconstruct" return values back in, i.e. re-entry; when nil, defaults to attempt at network min
 	);

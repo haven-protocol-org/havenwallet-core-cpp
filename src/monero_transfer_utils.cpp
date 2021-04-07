@@ -381,7 +381,6 @@ void monero_transfer_utils::send_step1__prepare_params_for_get_decoys(
 	const vector<SpendableOutput> &unspent_outs,
 	uint64_t fee_per_b, // per v8
 	uint64_t fee_quantization_mask,
-	cryptonote::network_type nettype,
 	//
 	optional<uint64_t> passedIn_attemptAt_fee
 ) {
