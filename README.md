@@ -285,6 +285,7 @@ Useful for displaying an estimated fee – To obtain exact fees, see "Creating a
 	* `n_outputs: UInt32String`
 	* `extra_size: UInt32String`
 	* `bulletproof: BoolString`
+	* `clsag: BoolString`
 
 * Returns: `retVal: UInt32String`
 
@@ -311,16 +312,40 @@ The values which must be passed between functions have (almost entirely) consist
 
 * `CreateTransactionErrorCode: UInt32String` defined in `monero_transfer_utils.hpp`; to remain stable within major versions
 
+* `PricingRecord: Dictionary` with 
+	* `blockchain_height: UInt64String`
+	* `pricing_record: Dictionary` with
+		* `sig_hex: String`
+		* `unused1: UInt64String`
+		* `unused2: UInt64String`
+		* `unused3: UInt64String`
+		* `xAG: UInt64String`
+		* `xAU: UInt64String`
+		* `xAUD: UInt64String`
+		* `xBTC: UInt64String`
+		* `xCAD: UInt64String`
+		* `xCHF: UInt64String`
+		* `xCNY: UInt64String`
+		* `xERU: UInt64String`
+		* `xGBP: UInt64String`
+		* `xJPY: UInt64String`
+		* `xNOK: UInt64String`
+		* `xNZD: UInt64String`
+		* `xUSD: UInt64String`
+
 ##### `send_step1__prepare_params_for_get_decoys`
 
 * Args: 
 	* `sending_amount: UInt64String`
 	* `is_sweeping: BoolString`
+	* `from_asset_type: String`
+	* `to_asset_type: String`
 	* `priority: UInt32String` of `1`–`4`
 	* `fee_per_b: UInt64String`
 	* `fee_mask: UInt64String`
 	* `fork_version: UInt8String`
 	* `unspent_outs: [UnspentOutput]` - fully parsed server response
+	* `pr: [PricingRecord]` - fully parsed server response
 	* `payment_id_string: Optional<String>`
 	* `passedIn_attemptAt_fee: Optional<UInt64String>`
 	
@@ -339,10 +364,10 @@ The values which must be passed between functions have (almost entirely) consist
 	*OR* 
 	
 	* `mixin: UInt32String` use this for requesting random outputs before step2
-	* `using_fee: UInt64String`
-	* `change_amount: UInt64String`
+	* `using_fee: UInt64String` expressed in same currency as `from_asset_type`
+	* `change_amount: UInt64String` expressed in same currency as `from_asset_type`
 	* `using_outs: [UnspentOutput]` passable directly to step2
-	* `final_total_wo_fee: UInt64String`
+	* `final_total_wo_fee: UInt64String` expressed in same currency as `from_asset_type`
 	
 
 ##### `send_step2__try_create_transaction`
@@ -352,6 +377,8 @@ The values which must be passed between functions have (almost entirely) consist
 	* `sec_viewKey_string: String`
 	* `sec_spendKey_string: String`
 	* `to_address_string: String`
+	* `from_asset_type: String`
+	* `to_asset_type: String`
 	* `final_total_wo_fee: UInt64String` returned by step1
 	* `change_amount: UInt64String` returned by step1
 	* `fee_amount: UInt64String` returned by step1
@@ -361,6 +388,8 @@ The values which must be passed between functions have (almost entirely) consist
 	* `fork_version: UInt8String`
 	* `using_outs: [UnspentOutput]` returned by step1
 	* `mix_outs: [MixAmountAndOuts]` defined below
+	* `current_height: UInt64String` obtained from API call
+	* `pr: [PricingRecord]` - fully parsed server response
 	* `unlock_time: UInt64String`
 	* `nettype_string: NettypeString`
 	* `payment_id_string: Optional<String>`
