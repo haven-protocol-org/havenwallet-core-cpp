@@ -343,6 +343,7 @@ string serial_bridge::estimate_fee(const string &args_string)
 	int n_outputs = stoul(json_root.get<string>("n_outputs"));
 	size_t extra_size = stoul(json_root.get<string>("extra_size"));
 	bool bulletproof = json_root.get<bool>("bulletproof");
+	bool clsag = json_root.get<bool>("clsag");
 	uint64_t base_fee = stoull(json_root.get<string>("base_fee"));
 	uint64_t fee_quantization_mask = stoull(json_root.get<string>("fee_quantization_mask"));
 	uint32_t priority = stoul(json_root.get<string>("priority"));
@@ -350,7 +351,7 @@ string serial_bridge::estimate_fee(const string &args_string)
 	use_fork_rules_fn_type use_fork_rules_fn = monero_fork_rules::make_use_fork_rules_fn(fork_version);
 	uint64_t fee_multiplier = monero_fee_utils::get_fee_multiplier(priority, monero_fee_utils::default_priority(), monero_fee_utils::get_fee_algorithm(use_fork_rules_fn), use_fork_rules_fn);
 	//
-	uint64_t fee = monero_fee_utils::estimate_fee(use_per_byte_fee, use_rct, n_inputs, mixin, n_outputs, extra_size, bulletproof, base_fee, fee_multiplier, fee_quantization_mask);
+	uint64_t fee = monero_fee_utils::estimate_fee(use_per_byte_fee, use_rct, n_inputs, mixin, n_outputs, extra_size, bulletproof, clsag, base_fee, fee_multiplier, fee_quantization_mask);
 	//
 	std::ostringstream o;
 	o << fee;
@@ -372,8 +373,9 @@ string serial_bridge::estimate_tx_weight(const string &args_string)
 	int n_outputs = stoul(json_root.get<string>("n_outputs"));
 	size_t extra_size = stoul(json_root.get<string>("extra_size"));
 	bool bulletproof = json_root.get<bool>("bulletproof");
+	bool clsag = json_root.get<bool>("clsag");
 	//
-	uint64_t weight = monero_fee_utils::estimate_tx_weight(use_rct, n_inputs, mixin, n_outputs, extra_size, bulletproof);
+	uint64_t weight = monero_fee_utils::estimate_tx_weight(use_rct, n_inputs, mixin, n_outputs, extra_size, bulletproof, clsag);
 	//
 	std::ostringstream o;
 	o << weight;
@@ -394,7 +396,8 @@ string serial_bridge::estimate_rct_tx_size(const string &args_string)
 		stoul(json_root.get<string>("mixin")),
 		stoul(json_root.get<string>("n_outputs")),
 		stoul(json_root.get<string>("extra_size")),
-		json_root.get<bool>("bulletproof")
+		json_root.get<bool>("bulletproof"),
+		json_root.get<bool>("clsag")
 	);
 	std::ostringstream o;
 	o << size;
@@ -477,18 +480,47 @@ string serial_bridge::send_step1__prepare_params_for_get_decoys(const string &ar
 	if (optl__fork_version_string != none) {
 		fork_version = stoul(*optl__fork_version_string);
 	}
+	// initilize pricing record from JSON
+	const property_tree::ptree &pricing_record= json_root.get_child("pricing_record");
+	offshore::pricing_record pr;
+	pr.xAG = stoull(pricing_record.get<string>("xAG"));
+	pr.xAU = stoull(pricing_record.get<string>("xAU"));
+	pr.xAUD = stoull(pricing_record.get<string>("xAUD"));
+	pr.xBTC = stoull(pricing_record.get<string>("xBTC"));
+	pr.xCAD = stoull(pricing_record.get<string>("xCAD"));
+	pr.xCHF = stoull(pricing_record.get<string>("xCHF"));
+	pr.xCNY = stoull(pricing_record.get<string>("xCNY"));
+	pr.xEUR = stoull(pricing_record.get<string>("xEUR"));
+	pr.xGBP = stoull(pricing_record.get<string>("xGBP"));
+	pr.xJPY = stoull(pricing_record.get<string>("xJPY"));
+	pr.xNOK = stoull(pricing_record.get<string>("xNOK"));
+	pr.xNZD = stoull(pricing_record.get<string>("xNZD"));
+	pr.unused1 = stoull(pricing_record.get<string>("unused1"));
+	pr.unused2 = stoull(pricing_record.get<string>("unused2"));
+	pr.unused3 = stoull(pricing_record.get<string>("unused3"));
+	// get bytes from signature hex string
+ 	const string &sig_hex = pricing_record.get<string>("sig_hex");
+	for (unsigned int i = 0; i < sig_hex.length(); i += 2) {
+		std::string byteString = sig_hex.substr(i, 2);
+		pr.signature[i>>1] = (char) strtol(byteString.c_str(), NULL, 16);
+	}
+	//
 	Send_Step1_RetVals retVals;
 	monero_transfer_utils::send_step1__prepare_params_for_get_decoys(
 		retVals,
 		//
+		json_root.get<string>("from_asset_type"),
+		json_root.get<string>("to_asset_type"),
 		json_root.get_optional<string>("payment_id_string"),
 		stoull(json_root.get<string>("sending_amount")),
 		json_root.get<bool>("is_sweeping"),
 		stoul(json_root.get<string>("priority")),
+		pr,
 		monero_fork_rules::make_use_fork_rules_fn(fork_version),
 		unspent_outs,
 		stoull(json_root.get<string>("fee_per_b")), // per v8
 		stoull(json_root.get<string>("fee_mask")),
+		nettype_from_string(json_root.get<string>("nettype_string")),
 		//
 		optl__passedIn_attemptAt_fee // use this for passing step2 "must-reconstruct" return values back in, i.e. re-entry; when nil, defaults to attempt at network min
 	);
@@ -568,6 +600,32 @@ string serial_bridge::send_step2__try_create_transaction(const string &args_stri
 		}
 		mix_outs.push_back(std::move(amountAndOuts));
 	}
+	//
+	// initilize pricing record from JSON
+	const property_tree::ptree &pricing_record= json_root.get_child("pricing_record");
+	offshore::pricing_record pr;
+	pr.xAG = stoull(pricing_record.get<string>("xAG"));
+	pr.xAU = stoull(pricing_record.get<string>("xAU"));
+	pr.xAUD = stoull(pricing_record.get<string>("xAUD"));
+	pr.xBTC = stoull(pricing_record.get<string>("xBTC"));
+	pr.xCAD = stoull(pricing_record.get<string>("xCAD"));
+	pr.xCHF = stoull(pricing_record.get<string>("xCHF"));
+	pr.xCNY = stoull(pricing_record.get<string>("xCNY"));
+	pr.xEUR = stoull(pricing_record.get<string>("xEUR"));
+	pr.xGBP = stoull(pricing_record.get<string>("xGBP"));
+	pr.xJPY = stoull(pricing_record.get<string>("xJPY"));
+	pr.xNOK = stoull(pricing_record.get<string>("xNOK"));
+	pr.xNZD = stoull(pricing_record.get<string>("xNZD"));
+	pr.unused1 = stoull(pricing_record.get<string>("unused1"));
+	pr.unused2 = stoull(pricing_record.get<string>("unused2"));
+	pr.unused3 = stoull(pricing_record.get<string>("unused3"));
+	// get bytes from signature hex string
+ 	const string &sig_hex = pricing_record.get<string>("sig_hex");
+	for (unsigned int i = 0; i < sig_hex.length(); i += 2) {
+		std::string byteString = sig_hex.substr(i, 2);
+		pr.signature[i>>1] = (char) strtol(byteString.c_str(), NULL, 16);
+	}
+	//
 	uint8_t fork_version = 0; // if missing
 	optional<string> optl__fork_version_string = json_root.get_optional<string>("fork_version");
 	if (optl__fork_version_string != none) {
@@ -581,6 +639,8 @@ string serial_bridge::send_step2__try_create_transaction(const string &args_stri
 		json_root.get<string>("sec_viewKey_string"),
 		json_root.get<string>("sec_spendKey_string"),
 		json_root.get<string>("to_address_string"),
+		json_root.get<string>("from_asset_type"),
+		json_root.get<string>("to_asset_type"),
 		json_root.get_optional<string>("payment_id_string"),
 		stoull(json_root.get<string>("final_total_wo_fee")),
 		stoull(json_root.get<string>("change_amount")),
@@ -590,6 +650,8 @@ string serial_bridge::send_step2__try_create_transaction(const string &args_stri
 		stoull(json_root.get<string>("fee_per_b")),
 		stoull(json_root.get<string>("fee_mask")),
 		mix_outs,
+		stoull(json_root.get<string>("blockchain_height")),
+		pr,
 		monero_fork_rules::make_use_fork_rules_fn(fork_version),
 		stoull(json_root.get<string>("unlock_time")),
 		nettype_from_string(json_root.get<string>("nettype_string"))

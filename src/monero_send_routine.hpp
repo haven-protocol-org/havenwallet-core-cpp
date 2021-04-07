@@ -64,6 +64,7 @@ namespace monero_send_routine
 	{ // strings are NOT references, so they get copied, allowing scope of struct init not to be an issue
 		const string address;
 		const string view_key;
+		const string asset_type;
 		const string amount; // "0" uint64_string
 		size_t mixin;
 		bool use_dust; // true; send-funds is now coded to filter unmixable and below threshold dust properly when sweeping and not sweeping
@@ -74,6 +75,7 @@ namespace monero_send_routine
 		boost::property_tree::ptree req_params_root;
 		req_params_root.put("address", req_params.address);
 		req_params_root.put("view_key", req_params.view_key);
+		req_params_root.put("asset_type", req_params.asset_type);
 		req_params_root.put("amount", req_params.amount);
 		req_params_root.put("dust_threshold", req_params.dust_threshold);
 		req_params_root.put("use_dust", req_params.use_dust);
@@ -85,7 +87,8 @@ namespace monero_send_routine
 	}
 	LightwalletAPI_Req_GetUnspentOuts new__req_params__get_unspent_outs( // used internally and by emscr async send impl
 		string from_address_string,
-		string sec_viewKey_string
+		string sec_viewKey_string,
+		string from_asset_type
 	);
 	typedef std::function<void(
 		LightwalletAPI_Req_GetUnspentOuts, // req_params - use these for making the request
@@ -214,7 +217,8 @@ namespace monero_send_routine
 		const property_tree::ptree &res,
 		const secret_key &sec_viewKey,
 		const secret_key &sec_spendKey,
-		const public_key &pub_spendKey
+		const public_key &pub_spendKey,
+		string from_asset_type
 	);
 	LightwalletAPI_Res_GetRandomOuts new__parsed_res__get_random_outs(
 		const property_tree::ptree &res
@@ -228,10 +232,14 @@ namespace monero_send_routine
 		string sec_spendKey_string;
 		string pub_spendKey_string;
 		string to_address_string;
+		string from_asset_type;
+		string to_asset_type;
 		optional<string> payment_id_string;
 		uint64_t sending_amount;
 		bool is_sweeping;
 		uint32_t simple_priority;
+		uint64_t blockchain_height;
+		offshore::pricing_record pr;
 		send__get_unspent_outs_fn_type get_unspent_outs_fn;
 		send__get_random_outs_fn_type get_random_outs_fn;
 		send__submit_raw_tx_fn_type submit_raw_tx_fn;
