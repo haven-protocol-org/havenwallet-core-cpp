@@ -63,6 +63,9 @@ namespace monero_transfer_utils
 	struct SpendableOutput
 	{
 		uint64_t amount;
+		uint64_t amount_usd;
+		uint64_t amount_xasset;
+		string asset_type;
 		string public_key;
 		optional<string> rct;
 		uint64_t global_index;
@@ -189,10 +192,13 @@ namespace monero_transfer_utils
 	void send_step1__prepare_params_for_get_decoys(
 		Send_Step1_RetVals &retVals,
 		//
+		const string &from_asset_type,
+		const string &to_asset_type,
 		const optional<string>& payment_id_string,
 		uint64_t sending_amount,
 		bool is_sweeping,
 		uint32_t simple_priority,
+		offshore::pricing_record pr,
 		use_fork_rules_fn_type use_fork_rules_fn,
 		//
 		const vector<SpendableOutput> &unspent_outs,
@@ -223,6 +229,8 @@ namespace monero_transfer_utils
 		const string &sec_viewKey_string,
 		const string &sec_spendKey_string,
 		const string &to_address_string,
+		const string &from_asset_type,
+		const string &to_asset_type,
 		const optional<string>& payment_id_string,
 		uint64_t final_total_wo_fee, // this gets passed to create_transaction's 'sending_amount'
 		uint64_t change_amount,
@@ -232,6 +240,8 @@ namespace monero_transfer_utils
 		uint64_t fee_per_b, // per v8
 		uint64_t fee_quantization_mask,
 		vector<RandomAmountOutputs> &mix_outs, // it gets sorted
+		uint64_t current_height,
+		offshore::pricing_record pr,
 		use_fork_rules_fn_type use_fork_rules_fn,
 		uint64_t unlock_time, // or 0
 		cryptonote::network_type nettype
@@ -257,12 +267,17 @@ namespace monero_transfer_utils
 		const string &sec_viewKey_string,
 		const string &sec_spendKey_string,
 		const string &to_address_string,
+		const string &from_asset_type,
+		const string &to_asset_type,
 		const optional<string>& payment_id_string,
 		uint64_t sending_amount,
 		uint64_t change_amount,
 		uint64_t fee_amount,
+		uint64_t simple_priority,
 		const vector<SpendableOutput> &outputs,
 		vector<RandomAmountOutputs> &mix_outs, // get sorted
+		uint64_t current_height,
+		offshore::pricing_record pr,
 		use_fork_rules_fn_type use_fork_rules_fn,
 		uint64_t unlock_time							= 0, // or 0
 		network_type nettype 							= MAINNET
@@ -281,12 +296,17 @@ namespace monero_transfer_utils
 		const uint32_t subaddr_account_idx, // pass 0 for no subaddrs
 		const std::unordered_map<crypto::public_key, cryptonote::subaddress_index> &subaddresses,
 		const address_parse_info &to_addr, // this _must_ include correct .is_subaddr
+		const string &from_asset_type,
+		const string &to_asset_type,
 		uint64_t sending_amount,
 		uint64_t change_amount,
 		uint64_t fee_amount,
+		uint64_t simple_priority,
 		const vector<SpendableOutput> &outputs,
 		vector<RandomAmountOutputs> &mix_outs,
-		const std::vector<uint8_t> &extra, // this is not declared const b/c it may have the output tx pub key appended to it
+		std::vector<uint8_t> &extra, // this is not declared const b/c it may have offshore data added to it
+		uint64_t current_height,
+		offshore::pricing_record pr,
 		use_fork_rules_fn_type use_fork_rules_fn,
 		uint64_t unlock_time							= 0, // or 0
 		bool rct 										= true,

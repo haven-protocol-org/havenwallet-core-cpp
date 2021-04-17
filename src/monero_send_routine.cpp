@@ -72,13 +72,15 @@ optional<uint64_t> _possible_uint64_from_json(
 //
 LightwalletAPI_Req_GetUnspentOuts monero_send_routine::new__req_params__get_unspent_outs(
 	string from_address_string,
-	string sec_viewKey_string
+	string sec_viewKey_string,
+	string from_asset_type
 ) {
 	ostringstream dustT_ss;
 	dustT_ss << dust_threshold();
 	return {
 		std::move(from_address_string),
 		std::move(sec_viewKey_string),
+		std::move(from_asset_type),
 		"0", // amount - always sent as "0"
 		fixed_mixinsize(),
 		true, // use dust
@@ -109,7 +111,8 @@ LightwalletAPI_Res_GetUnspentOuts monero_send_routine::new__parsed_res__get_unsp
 	const property_tree::ptree &res,
 	const secret_key &sec_viewKey,
 	const secret_key &sec_spendKey,
-	const public_key &pub_spendKey
+	const public_key &pub_spendKey,
+	string from_asset_type
 ) {
 	uint64_t final__per_byte_fee = 0;
 	uint64_t fee_mask = 10000; // just a fallback value - no real reason to set this here normally
@@ -299,6 +302,8 @@ struct _SendFunds_ConstructAndSendTx_Args
 	const string &sec_viewKey_string;
 	const string &sec_spendKey_string;
 	const string &to_address_string;
+	const string &from_asset_type;
+	const string &to_asset_type;
 	optional<string> payment_id_string;
 	uint64_t sending_amount;
 	bool is_sweeping;
@@ -314,6 +319,8 @@ struct _SendFunds_ConstructAndSendTx_Args
 	const vector<SpendableOutput> &unspent_outs;
 	uint64_t fee_per_b;
 	uint64_t fee_quantization_mask;
+	uint64_t blockchain_height;
+	offshore::pricing_record pr;
 	uint8_t fork_version;
 	//
 	// cached
@@ -338,10 +345,13 @@ void _reenterable_construct_and_send_tx(
 	monero_transfer_utils::send_step1__prepare_params_for_get_decoys(
 		step1_retVals,
 		//
+		args.from_asset_type,
+		args.to_asset_type,
 		args.payment_id_string,
 		args.sending_amount,
 		args.is_sweeping,
 		args.simple_priority,
+		args.pr,
 		use_fork_rules,
 		args.unspent_outs,
 		args.fee_per_b,
@@ -380,6 +390,8 @@ void _reenterable_construct_and_send_tx(
 			args.sec_viewKey_string,
 			args.sec_spendKey_string,
 			args.to_address_string,
+			args.from_asset_type,
+			args.to_asset_type,
 			args.payment_id_string,
 			step1_retVals.final_total_wo_fee,
 			step1_retVals.change_amount,
@@ -389,6 +401,8 @@ void _reenterable_construct_and_send_tx(
 			args.fee_per_b,
 			args.fee_quantization_mask,
 			*(parsed_res.mix_outs),
+			args.blockchain_height,
+			args.pr,
 			std::move(use_fork_rules),
 			args.unlock_time,
 			args.nettype
@@ -509,7 +523,8 @@ void monero_send_routine::async__send_funds(Async_SendFunds_Args args)
 	) -> void {
 		auto parsed_res = new__parsed_res__get_unspent_outs(
 			res,
-			sec_viewKey, sec_spendKey, pub_spendKey
+			sec_viewKey, sec_spendKey, pub_spendKey,
+			args.from_asset_type
 		);
 		if (parsed_res.err_msg != none) {
 			SendFunds_Error_RetVals error_retVals;
@@ -519,7 +534,8 @@ void monero_send_routine::async__send_funds(Async_SendFunds_Args args)
 		}
 		_reenterable_construct_and_send_tx(_SendFunds_ConstructAndSendTx_Args{
 			args.from_address_string, args.sec_viewKey_string, args.sec_spendKey_string,
-			args.to_address_string, args.payment_id_string, usable__sending_amount, args.is_sweeping, args.simple_priority,
+			args.to_address_string, args.from_asset_type, args.to_asset_type,
+			args.payment_id_string, usable__sending_amount, args.is_sweeping, args.simple_priority,
 			args.get_random_outs_fn, args.submit_raw_tx_fn, args.status_update_fn, args.error_cb_fn, args.success_cb_fn,
 			args.unlock_time == none ? 0 : *(args.unlock_time),
 			args.nettype == none ? MAINNET : *(args.nettype),
@@ -527,6 +543,7 @@ void monero_send_routine::async__send_funds(Async_SendFunds_Args args)
 			*(parsed_res.unspent_outs),
 			*(parsed_res.per_byte_fee),
 			*(parsed_res.fee_mask),
+			args.blockchain_height, args.pr,
 			parsed_res.fork_version,
 			//
 			sec_viewKey, sec_spendKey
@@ -537,7 +554,8 @@ void monero_send_routine::async__send_funds(Async_SendFunds_Args args)
 	args.get_unspent_outs_fn(
 		new__req_params__get_unspent_outs(
 			args.from_address_string,
-			args.sec_viewKey_string
+			args.sec_viewKey_string,
+			args.from_asset_type
 		),
 		get_unspent_outs_fn__cb_fn
 	);

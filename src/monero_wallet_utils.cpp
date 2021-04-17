@@ -298,8 +298,8 @@ bool monero_wallet_utils::wallet_with(
 	account.generate(
 		*decodedSeed_retVals.optl__sec_seed, // is this an extra copy? maybe have consumer pass ref as arg instead
 		true/*recover*/,
-		false/*two_random*/,
-		decodedSeed_retVals.from_legacy16B_lw_seed // assumed set if r
+		false/*two_random*/
+		// decodedSeed_retVals.from_legacy16B_lw_seed // assumed set if r
 	);
 	const cryptonote::account_keys& keys = account.get_keys();
 	retVals.optl__desc = WalletDescription{
@@ -355,8 +355,8 @@ bool monero_wallet_utils::address_and_keys_from_seed(
 	account.generate(
 		sec_seed,
 		true/*recover*/,
-		false/*two_random*/,
-		from_legacy16B_lw_seed // assumed set if r
+		false/*two_random*/
+		// from_legacy16B_lw_seed // assumed set if r
 	);
 	const cryptonote::account_keys& keys = account.get_keys();
 	retVals.optl__val = ComponentsFromSeed{
@@ -485,7 +485,7 @@ bool monero_wallet_utils::validate_wallet_components_with( // returns !did_error
 				coerce_valid_sec_key_from(legacy16B_sec_seed, sec_seed);
 			}
 			cryptonote::account_base expected_account{}; // this initializes the wallet and should call the default constructor
-			expected_account.generate(sec_seed, true/*recover*/, false/*two_random*/, from_legacy16B_lw_seed);
+			expected_account.generate(sec_seed, true/*recover*/, false/*two_random*/ /*, from_legacy16B_lw_seed*/);
 			const cryptonote::account_keys& expected_account_keys = expected_account.get_keys();
 			// TODO: assert sec_spendKey initialized?
 			if (expected_account_keys.m_view_secret_key != sec_viewKey) {
