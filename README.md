@@ -1,4 +1,4 @@
-# MyMonero Core C++
+# Haven Core C++
 
 1. What's in this Repo?
 1. Setup
@@ -12,19 +12,36 @@
 
 ## What's in This Repo?
 
-This repository holds the C++ source code for the Monero/CryptoNote cryptography and protocols, plus lightwallet functions which power the official [MyMonero](https://www.mymonero.com) apps.
+This repository holds the C++ source code for the Haven/Monero/CryptoNote cryptography and protocols, plus lightwallet functions.
 
-A primary goal for this repository is its future convergence and reimplementation with an essential Monero core library.
+## Thank you to MyMonero
 
+This repository owes a huge thank you to the MyMonero folks who wrote [mymonero-core-cpp](https://github.com/mymonero/mymonero-core-cpp) from which this repository is forked. We have deep appreciation for the authors, contributors, and advisors of mymonero-core-cpp:
+
+* [`Paul Shapiro`](https://github.com/paulshapiro)
+
+* `luigi1111`
+
+* `vtnerd`
+
+* `moneromooo-monero`
+
+* `ndorf`
+
+* `gutenye`
+
+So, thank you!
+
+To anyone utilizing this library, please keep in mind, you may see many references to Monero and/or MyMonero in this repository (and in this README) as a result. We are working on cleaning this up for clarity.
 
 ### Contents 
 
-* `contrib/monero-core-custom` is a Git submodule which contains a curated subset of the official Monero C/C++ source code, eventually to be replaced by new official Monero core repo
+* `contrib/monero-core-custom` is a Git submodule which contains a curated subset of the official Haven C/C++ source code
 
 * `src` contains all the custom code written for this repo. 
-	* `serial_bridge_index` contains a central JSON interface to a set of central mymonero-core functions, documented below.
+	* `serial_bridge_index` contains a central JSON interface to a set of central haven-core functions, documented below.
 	
-* This readme is located at `README.md`, and the license is located at `LICENSE.txt`. All source code copyright © 2014-2018 by MyMonero. All rights reserved.
+* This readme is located at `README.md`, and the license is located at `LICENSE.txt`.
 
 
 ### Dependencies
@@ -62,7 +79,7 @@ Suggestions and feedback are very welcome!
 
 ## Pull Requests
 
-We'll merge nearly anything constructive and relevant. There are lots of items slated for development or happening concurrently, so get in touch and we'll let you know if anyone's working on it. We often collaborate over IRC in #mymonero on Freenode.
+We'll merge nearly anything constructive and relevant.
 
 Contributors credited in releases.
 
@@ -74,30 +91,15 @@ Contributors credited in releases.
 
 * Branches and PRs should be made from and to the `develop` branch, which gets merged to `master` for tagged releases
 
-## Authors, Contributors, and Advisors
-
-* 💫 [`Paul Shapiro`](https://github.com/paulshapiro) Lead dev, maintainer
-
-* 🍄 `luigi1111`
-
-* 🤵 `vtnerd` C++ & Monero advisory
-
-* 🐮 `moneromooo-monero` Major Monero contributor; Advisory
-
-* 🦁 `ndorf` C++ & Monero expertise, architecture, code contributions
-
-* 🏍 `gutenye` Code contributions
-
-
 ## Embedding the C++
 
 If you want to embed the C++ or build the source in your own project, please take note of the following:
 
 * `slow-hash.c` must be compiled with `-maes`
 
-* The Monero source, a slightly modified version of which is a dep of this project, can only be built on versions of iOS >= 9 due to required support for `thread_local` as used by `threadpool.cpp`.
+* The Haven source, a slightly modified version of which is a dep of this project, can only be built on versions of iOS >= 9 due to required support for `thread_local` as used by `threadpool.cpp`.
 
-* Not all Monero `.cpp` files which are in `monero-core-custom` must be included for `mymonero-core-cpp` - such as when their symbols are not required by any code called by this project. See `CMakeLists.txt` for a list of files required for compilation.
+* Not all Haven `.cpp` files which are in `monero-core-custom` must be included for `mymonero-core-cpp` - such as when their symbols are not required by any code called by this project. See `CMakeLists.txt` for a list of files required for compilation.
 
 * If you only want to call the C++ directly without using `serial_bridge_index` (described below), then that file-pair does not need to be included in your build. (See mymonero-app-ios link)
 
