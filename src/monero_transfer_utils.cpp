@@ -319,20 +319,29 @@ uint64_t get_xusd_to_xasset_fee(uint64_t amount, uint32_t priority, use_fork_rul
   return 0;
 }
 //----------------------------------------------------------------------------------------------------
-uint64_t convert_fee_to_source_asset_type(uint64_t fee, string from_asset_type, offshore::pricing_record pr)
+uint64_t convert_base_fee_to_source_asset_type(const uint64_t base_fee_orig, string from_asset_type, string to_asset_type, offshore::pricing_record pr)
 {
-  	// Fee estimate is in XHV - if necessary, convert to same currency as source asset
-	if (from_asset_type != "XHV") {
-		uint64_t fee_xusd_amount = get_xusd_amount(fee, "XHV", pr);
+	uint64_t base_fee = base_fee_orig;
 
-		if (from_asset_type == "XUSD") {
-			fee = fee_xusd_amount;
-		} else {
-			fee = get_xasset_amount(fee_xusd_amount, from_asset_type, pr);
+	// copied from wallet2.cpp:
+	// Convert fees to source asset type equvelent value if only it is a conversion.
+	// the reason we do this is we need the pr record for conversions.
+	// but we still want assets to be transferable even in the absence of oracle.
+	// so we don't try to adjust the fee according to usd equivalent.
+	// the only donwnside is fees are little bit higher for the assets that has high usd value.
+ 	if (from_asset_type == "XHV") {
+ 	} else if (from_asset_type == "XUSD") {
+		if (from_asset_type != to_asset_type) {
+			base_fee = get_xusd_amount(base_fee_orig, "XHV", pr);
 		}
+ 	} else {
+   		if (from_asset_type != to_asset_type) {
+     		// Convert fee to xAsset
+			base_fee = get_xasset_amount(get_xusd_amount(base_fee_orig, "XHV", pr), from_asset_type, pr);
+	    }
 	}
 
-	return fee;
+	return base_fee;
 }
 } // unnamed namespace
 //
@@ -457,7 +466,8 @@ void monero_transfer_utils::send_step1__prepare_params_for_get_decoys(
       THROW_WALLET_EXCEPTION_IF(sending_amount % 100000000, error::wallet_internal_error, "Offshore/xAsset TX amounts permit at most 4 decimal places");
 	}
 
-	const uint64_t base_fee = get_base_fee(fee_per_b); // in other words, fee_per_b
+	const uint64_t base_fee_orig = get_base_fee(fee_per_b); // in other words, fee_per_b
+	uint64_t base_fee = convert_base_fee_to_source_asset_type(base_fee_orig, from_asset_type, to_asset_type, pr);
 	const uint64_t fee_multiplier = get_fee_multiplier(simple_priority, default_priority(), get_fee_algorithm(use_fork_rules_fn), use_fork_rules_fn);
 	//
 	uint64_t attempt_at_min_fee;
@@ -465,7 +475,6 @@ void monero_transfer_utils::send_step1__prepare_params_for_get_decoys(
 		uint64_t attempt_at_min_fee = estimate_fee(true/*use_per_byte_fee*/, true/*use_rct*/, 2/*est num inputs*/, fake_outs_count, 2, extra.size(), bulletproof, clsag, base_fee, fee_multiplier, fee_quantization_mask);
 		// opted to do this instead of `const uint64_t min_fee = (fee_multiplier * base_fee * estimate_tx_size(use_rct, 1, fake_outs_count, 2, extra.size(), bulletproof));`
 		// TODO: estimate with 1 input or 2?
-		attempt_at_min_fee = convert_fee_to_source_asset_type(attempt_at_min_fee, from_asset_type, pr);
 	} else {
 		attempt_at_min_fee = *passedIn_attemptAt_fee;
 	}
@@ -536,7 +545,6 @@ void monero_transfer_utils::send_step1__prepare_params_for_get_decoys(
 		retVals.using_outs.size(), fake_outs_count, /*tx.dsts.size()*/1+1, extra.size(),
 		bulletproof, clsag, base_fee, fee_multiplier, fee_quantization_mask
 	);
-	needed_fee = convert_fee_to_source_asset_type(needed_fee, from_asset_type, pr);
 	// Calculate the offshore fee
 	uint64_t total_for_offshore_fee = is_sweeping ? using_outs_amount : sending_amount_in_source_currency;
 	uint64_t offshore_fee = (offshore) ? get_offshore_fee(total_for_offshore_fee, simple_priority)
@@ -586,7 +594,7 @@ void monero_transfer_utils::send_step1__prepare_params_for_get_decoys(
 				retVals.using_outs.size(), fake_outs_count, /*tx.dsts.size()*/1+1, extra.size(),
 				bulletproof, clsag, base_fee, fee_multiplier, fee_quantization_mask
 			);
-			needed_fee = offshore_fee + convert_fee_to_source_asset_type(needed_fee, from_asset_type, pr);
+			needed_fee += offshore_fee;
 			total_incl_fees = sending_amount_in_source_currency + needed_fee; // because fee changed
 		}
 		retVals.required_balance = total_incl_fees; // update required_balance b/c total_incl_fees changed
@@ -701,14 +709,15 @@ void monero_transfer_utils::send_step2__try_create_transaction(
 		: 0;
 	//
 	size_t blob_size = *create_tx__retVals.txBlob_byteLength;
+	const uint64_t base_fee_orig = get_base_fee(fee_per_b); // in other words, fee_per_b
+	uint64_t base_fee = convert_base_fee_to_source_asset_type(base_fee_orig, from_asset_type, to_asset_type, pr);
 	uint64_t fee_actually_needed = calculate_fee(
 		true/*use_per_byte_fee*/,
 		*create_tx__retVals.tx, blob_size,
-		get_base_fee(fee_per_b)/*i.e. fee_per_b*/,
+		base_fee,
 		get_fee_multiplier(simple_priority, default_priority(), get_fee_algorithm(use_fork_rules_fn), use_fork_rules_fn),
 		fee_quantization_mask
 	);
-	fee_actually_needed = convert_fee_to_source_asset_type(fee_actually_needed, from_asset_type, pr);
 	fee_actually_needed += offshore_fee;
 	if (fee_actually_needed > fee_amount) {
 //		cout << "Need to reconstruct tx with fee of at least " << fee_actually_needed << "." << endl;
