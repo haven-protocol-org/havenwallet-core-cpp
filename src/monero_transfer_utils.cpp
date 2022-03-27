@@ -298,8 +298,8 @@ uint64_t get_offshore_to_offshore_fee(uint64_t amount, uint32_t priority)
 //----------------------------------------------------------------------------------------------------
 uint64_t get_xasset_to_xusd_fee(uint64_t amount, uint32_t priority, use_fork_rules_fn_type use_fork_rules_fn)
 {
-  if (use_fork_rules_fn(HF_VERSION_OFFSHORE_FEES_V3, 0)) {
-    return (amount * 3) / 1000;
+  if (use_fork_rules_fn(HF_VERSION_XASSET_FEES_V2, 0)) {
+    return (amount * 5) / 1000;
   }
 
   return 0;
@@ -312,8 +312,8 @@ uint64_t get_xasset_transfer_fee(uint64_t amount, uint32_t priority)
 //----------------------------------------------------------------------------------------------------
 uint64_t get_xusd_to_xasset_fee(uint64_t amount, uint32_t priority, use_fork_rules_fn_type use_fork_rules_fn)
 {
-  if (use_fork_rules_fn(HF_VERSION_OFFSHORE_FEES_V3, 0)) {
-    return (amount * 3) / 1000;
+  if (use_fork_rules_fn(HF_VERSION_XASSET_FEES_V2, 0)) {
+    return (amount * 5) / 1000;
   }
 
   return 0;
@@ -1051,13 +1051,21 @@ void monero_transfer_utils::create_transaction(
 	cryptonote::transaction tx;
 	crypto::secret_key tx_key;
 	std::vector<crypto::secret_key> additional_tx_keys;
-	uint32_t fees_version = use_fork_rules_fn(HF_VERSION_OFFSHORE_FEES_V3, 0) ? 3 : use_fork_rules_fn(HF_VERSION_OFFSHORE_FEES_V2, 0) ? 2 : 1;
+	transaction_type tx_type;
+	if (!get_tx_type(to_asset_type, from_asset_type, tx_type)) 
+	{
+		retVals.errCode = invalidAssetTypes;
+		return;
+	}
+	uint32_t fees_version = use_fork_rules_fn(HF_PER_OUTPUT_UNLOCK_VERSION, 0) ? 4 : use_fork_rules_fn(HF_VERSION_XASSET_FEES_V2, 0) ? 3 : use_fork_rules_fn(HF_VERSION_OFFSHORE_FEES_V2, 0) ? 2 : 1;
 	bool use_offshore_tx_version = use_fork_rules_fn(HF_VERSION_OFFSHORE_FULL, 0);
+	//TODO check posibility to fetch hf version dynamically
+	uint32_t hf_version = HF_PER_OUTPUT_UNLOCK_VERSION;
 	bool r = cryptonote::construct_tx_and_get_tx_key(
 		sender_account_keys, subaddresses,
 		sources, splitted_dsts, change_dst.addr, extra,
-		tx, unlock_time, tx_key, additional_tx_keys,
-		current_height - 1, pr, fees_version, use_offshore_tx_version, 
+		tx, tx_type, to_asset_type, from_asset_type, unlock_time, tx_key, additional_tx_keys,
+		current_height - 1, pr, fees_version, hf_version, 
 		true, rct_config,
 		/*m_multisig ? &msout : */NULL
 	);
