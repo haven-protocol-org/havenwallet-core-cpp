@@ -69,12 +69,14 @@ namespace monero_transfer_utils
 		string public_key;
 		optional<string> rct;
 		uint64_t global_index;
+		uint64_t asset_index;
 		uint64_t index;
 		string tx_pub_key;
 	};
 	struct RandomAmountOutput
 	{
 		uint64_t global_index; // this is, I believe, presently supplied as a string by the API, probably to avoid overflow
+		uint64_t asset_index;
 		string public_key;
 		optional<string> rct;
 	};

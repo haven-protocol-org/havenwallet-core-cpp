@@ -465,6 +465,7 @@ string serial_bridge::send_step1__prepare_params_for_get_decoys(const string &ar
 			out.rct = none; // just in case it's an empty string, send to 'none' (even though receiving code now handles empty strs)
 		}
 		out.global_index = stoull(output_desc.second.get<string>("global_index"));
+		out.asset_index = stoull(output_desc.second.get<string>("asset_index"));
 		out.index = stoull(output_desc.second.get<string>("index"));
 		out.tx_pub_key = output_desc.second.get<string>("tx_pub_key");
 		//
@@ -548,6 +549,7 @@ string serial_bridge::send_step1__prepare_params_for_get_decoys(const string &ar
 					out_ptree.put("rct", *out.rct); 
 				}
 				out_ptree.put("global_index", RetVals_Transforms::str_from(out.global_index));
+				out_ptree.put("asset_index", RetVals_Transforms::str_from(out.asset_index));
 				out_ptree.put("index", RetVals_Transforms::str_from(out.index));
 				out_ptree.put("tx_pub_key", out.tx_pub_key);
 				using_outs_ptree.push_back(out_ptree_pair);
@@ -577,6 +579,7 @@ string serial_bridge::send_step2__try_create_transaction(const string &args_stri
 			out.rct = none; // send to 'none' if empty str for safety
 		}
 		out.global_index = stoull(output_desc.second.get<string>("global_index"));
+		out.asset_index = stoull(output_desc.second.get<string>("asset_index"));
 		out.index = stoull(output_desc.second.get<string>("index"));
 		out.tx_pub_key = output_desc.second.get<string>("tx_pub_key");
 		//
@@ -593,6 +596,7 @@ string serial_bridge::send_step2__try_create_transaction(const string &args_stri
 			assert(mix_out_output_desc.first.empty()); // array elements have no names
 			auto amountOutput = RandomAmountOutput{};
 			amountOutput.global_index = stoull(mix_out_output_desc.second.get<string>("global_index")); // this is, I believe, presently supplied as a string by the API, probably to avoid overflow
+			amountOutput.asset_index = stoull(mix_out_output_desc.second.get<string>("asset_index")); // this is, I believe, presently supplied as a string by the API, probably to avoid overflow
 			amountOutput.public_key = mix_out_output_desc.second.get<string>("public_key");
 			amountOutput.rct = mix_out_output_desc.second.get_optional<string>("rct");
 			amountAndOuts.outputs.push_back(std::move(amountOutput));

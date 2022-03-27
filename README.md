@@ -309,6 +309,7 @@ The values which must be passed between functions have (almost entirely) consist
 	* `public_key: String`
 	* `rct: Optional<String>`
 	* `global_index: UInt64String`
+	* `asset_index: UInt64String` 
 	* `index: UInt64String`
 	* `tx_pub_key: String`
 
@@ -401,6 +402,7 @@ The values which must be passed between functions have (almost entirely) consist
 			* `outputs: [MixOut]` where
 				* `MixOut: Dictionary` with 
 					* `global_index: UInt64String`
+					* `asset_index: UInt64String`
 					* `public_key: String`
 					* `rct: Optional<String>`
 
