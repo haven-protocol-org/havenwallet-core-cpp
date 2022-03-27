@@ -99,6 +99,7 @@ namespace monero_send_routine
 	{
 		const vector<string> amounts;
 		const size_t count; // =mixin+1
+		const string asset_type;
 	};
 	static inline string json_string_from_req_GetRandomOuts(const LightwalletAPI_Req_GetRandomOuts &req_params)
 	{

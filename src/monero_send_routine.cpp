@@ -91,6 +91,7 @@ LightwalletAPI_Req_GetRandomOuts monero_send_routine::new__req_params__get_rando
 	vector<SpendableOutput> &step1__using_outs
 ) {
 	vector<string> decoy_req__amounts;
+	string asset_type;
 	BOOST_FOREACH(SpendableOutput &using_out, step1__using_outs)
 	{
 		if (using_out.rct != none && (*(using_out.rct)).size() > 0) {
@@ -100,10 +101,15 @@ LightwalletAPI_Req_GetRandomOuts monero_send_routine::new__req_params__get_rando
 			amount_ss << using_out.amount;
 			decoy_req__amounts.push_back(amount_ss.str());
 		}
+
+		// spendable outs should all from same asset_type, so just take it from the first one in  loop
+		if (asset_type.empty())
+			asset_type = using_out.asset_type;
 	}
 	return LightwalletAPI_Req_GetRandomOuts{
 		decoy_req__amounts,
-		fixed_mixinsize() + 1 // count; Add one to mixin so we can skip real output key if necessary
+		fixed_mixinsize() + 1, // count; Add one to mixin so we can skip real output key if necessary
+		asset_type
 	};
 }
 //
@@ -239,6 +245,7 @@ LightwalletAPI_Res_GetUnspentOuts monero_send_routine::new__parsed_res__get_unsp
 			out.public_key = output_desc.second.get<string>("public_key");
 			out.rct = output_desc.second.get_optional<string>("rct");
 			out.global_index = stoull(output_desc.second.get<string>("global_index"));
+			out.asset_index = stoull(output_desc.second.get<string>("asset_index"));
 			out.index = output__index;
 			out.tx_pub_key = *optl__tx_pub_key; // just b/c we've already accessed it above
 			//
@@ -282,6 +289,16 @@ LightwalletAPI_Res_GetRandomOuts monero_send_routine::new__parsed_res__get_rando
 			} catch (const std::exception &e) {
 				cout << "Random outs response 'global_index' parse error: " << e.what() << endl;
 				string err_msg = "Random outs: Unrecognized 'global_index' format";
+				return {err_msg, none};
+			}
+			try {
+				optional<uint64_t> possible__uint64 = _possible_uint64_from_json(mix_out_output_desc.second, "asset_index");
+				if (possible__uint64 != none) {
+					amountOutput.asset_index = *possible__uint64;
+				}
+			} catch (const std::exception &e) {
+				cout << "Random outs response 'asset_index' parse error: " << e.what() << endl;
+				string err_msg = "Random outs: Unrecognized 'asset_index' format";
 				return {err_msg, none};
 			}
 			amountOutput.public_key = mix_out_output_desc.second.get<string>("public_key");
