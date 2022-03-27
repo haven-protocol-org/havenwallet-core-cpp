@@ -110,7 +110,8 @@ namespace monero_transfer_utils
 		invalidPID						= 19,
 		enteredAmountTooLow				= 20,
 		cantGetDecryptedMaskFromRCTHex	= 21,
-		needMoreMoneyThanFound			= 90
+		needMoreMoneyThanFound			= 90,
+		invalidAssetTypes				= 100
 	};
 	static inline string err_msg_from_err_code__create_transaction(CreateTransactionErrorCode code)
 	{
@@ -161,6 +162,8 @@ namespace monero_transfer_utils
 				return "The amount you've entered is too low";
 			case cantGetDecryptedMaskFromRCTHex:
 				return "Can't get decrypted mask from 'rct' hex";
+			case invalidAssetTypes:
+				return "Either asset type or exchange style is invalid";
 		}
 	}
 	//
