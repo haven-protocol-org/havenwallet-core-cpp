@@ -432,10 +432,6 @@ void monero_transfer_utils::send_step1__prepare_params_for_get_decoys(
 	bool xasset_to_xusd = false;
 	bool xusd_to_xasset = false;
     if (from_asset_type != "XHV" || to_asset_type != "XHV") {
-		// Populate the txextra to signify that this is an offshore tx
-		std::string offshore_data = from_asset_type + "-" + to_asset_type;
-    	cryptonote::add_offshore_to_tx_extra(extra, offshore_data);
-
         if (from_asset_type == "XHV") {
           offshore = true;
         } else if (to_asset_type == "XHV") {
@@ -472,13 +468,12 @@ void monero_transfer_utils::send_step1__prepare_params_for_get_decoys(
 	//
 	uint64_t attempt_at_min_fee;
 	if (passedIn_attemptAt_fee == none) {
-		uint64_t attempt_at_min_fee = estimate_fee(true/*use_per_byte_fee*/, true/*use_rct*/, 2/*est num inputs*/, fake_outs_count, 2, extra.size(), bulletproof, clsag, base_fee, fee_multiplier, fee_quantization_mask);
+		attempt_at_min_fee = estimate_fee(true/*use_per_byte_fee*/, true/*use_rct*/, 2/*est num inputs*/, fake_outs_count, 2, extra.size(), bulletproof, clsag, base_fee, fee_multiplier, fee_quantization_mask);
 		// opted to do this instead of `const uint64_t min_fee = (fee_multiplier * base_fee * estimate_tx_size(use_rct, 1, fake_outs_count, 2, extra.size(), bulletproof));`
 		// TODO: estimate with 1 input or 2?
 	} else {
 		attempt_at_min_fee = *passedIn_attemptAt_fee;
 	}
-
 	// convert sending_amount to source asset type to use in the search for inputs from unspent outs
 	uint64_t sending_amount_in_source_currency;
 	if (offshore) {
@@ -545,6 +540,7 @@ void monero_transfer_utils::send_step1__prepare_params_for_get_decoys(
 		retVals.using_outs.size(), fake_outs_count, /*tx.dsts.size()*/1+1, extra.size(),
 		bulletproof, clsag, base_fee, fee_multiplier, fee_quantization_mask
 	);
+
 	// Calculate the offshore fee
 	uint64_t total_for_offshore_fee = is_sweeping ? using_outs_amount : sending_amount_in_source_currency;
 	uint64_t offshore_fee = (offshore) ? get_offshore_fee(total_for_offshore_fee, simple_priority)
@@ -555,6 +551,7 @@ void monero_transfer_utils::send_step1__prepare_params_for_get_decoys(
 		: (xasset_transfer) ? get_xasset_transfer_fee(total_for_offshore_fee, simple_priority)
 		: 0;
 	needed_fee += offshore_fee;
+
 	//
 	// if newNeededFee < neededFee, use neededFee instead (should only happen on the 2nd or later times through (due to estimated fee being too low))
 	if (needed_fee < attempt_at_min_fee) {
@@ -579,6 +576,7 @@ void monero_transfer_utils::send_step1__prepare_params_for_get_decoys(
 		total_incl_fees = using_outs_amount;
 	} else {
 		total_incl_fees = sending_amount_in_source_currency + needed_fee; // because fee changed because using_outs.size() was updated
+		
 		while (using_outs_amount < total_incl_fees && remaining_unusedOuts.size() > 0) { // add outputs 1 at a time till we either have them all or can meet the fee
 			{
 				auto out = pop_random_value(remaining_unusedOuts);
@@ -596,13 +594,14 @@ void monero_transfer_utils::send_step1__prepare_params_for_get_decoys(
 			);
 			needed_fee += offshore_fee;
 			total_incl_fees = sending_amount_in_source_currency + needed_fee; // because fee changed
+
 		}
 		retVals.required_balance = total_incl_fees; // update required_balance b/c total_incl_fees changed
 	}
 	retVals.using_fee = needed_fee;
 	//
-//	cout << "Final attempt at fee: " << needed_fee << " for " << retVals.using_outs.size() << " inputs" << endl;
-//	cout << "Balance to be used: " << total_incl_fees << endl;
+	//cout << "Final attempt at fee: " << needed_fee << " for " << retVals.using_outs.size() << " inputs" << endl;
+	//cout << "Balance to be used: " << total_incl_fees << endl;
 	if (using_outs_amount < total_incl_fees) {
 		retVals.errCode = needMoreMoneyThanFound; // sufficiently up-to-date (for this return case) required_balance and using_outs_amount (spendable balance) will have been stored for return by this point.
 		return;
@@ -763,7 +762,7 @@ void monero_transfer_utils::create_transaction(
 	uint32_t fake_outputs_count = fixed_mixinsize();
 	bool bulletproof = true;
 	rct::RangeProofType range_proof_type = bulletproof ? rct::RangeProofPaddedBulletproof : rct::RangeProofBorromean;
-	int bp_version = bulletproof ? (use_fork_rules_fn(HF_VERSION_XASSET_FULL, 0) ? 4 : (use_fork_rules_fn(HF_VERSION_CLSAG, 0) ? 3 : (use_fork_rules_fn(HF_VERSION_SMALLER_BP, -10) ? 2 : 1))) : 0;
+	int bp_version = bulletproof ? (use_fork_rules_fn(HF_VERSION_HAVEN2, 0) ? 5 : (use_fork_rules_fn(HF_VERSION_XASSET_FULL, 0) ? 4 : (use_fork_rules_fn(HF_VERSION_CLSAG, 0) ? 3 : (use_fork_rules_fn(HF_VERSION_SMALLER_BP, -10) ? 2 : 1)))) : 0;
 	const rct::RCTConfig rct_config {
 		range_proof_type,
 		bp_version,
@@ -934,9 +933,6 @@ void monero_transfer_utils::create_transaction(
 	bool xasset_to_xusd = false;
 	bool xusd_to_xasset = false;
     if (from_asset_type != "XHV" || to_asset_type != "XHV") {
-		// Populate the txextra to signify that this is an offshore tx
-		std::string offshore_data = from_asset_type + "-" + to_asset_type;
-    	cryptonote::add_offshore_to_tx_extra(extra, offshore_data);
 
         if (from_asset_type == "XHV") {
           offshore = true;
@@ -1058,7 +1054,6 @@ void monero_transfer_utils::create_transaction(
 		return;
 	}
 	uint32_t fees_version = use_fork_rules_fn(HF_PER_OUTPUT_UNLOCK_VERSION, 0) ? 4 : use_fork_rules_fn(HF_VERSION_XASSET_FEES_V2, 0) ? 3 : use_fork_rules_fn(HF_VERSION_OFFSHORE_FEES_V2, 0) ? 2 : 1;
-	bool use_offshore_tx_version = use_fork_rules_fn(HF_VERSION_OFFSHORE_FULL, 0);
 	//TODO check posibility to fetch hf version dynamically
 	uint32_t hf_version = HF_PER_OUTPUT_UNLOCK_VERSION;
 	bool r = cryptonote::construct_tx_and_get_tx_key(
