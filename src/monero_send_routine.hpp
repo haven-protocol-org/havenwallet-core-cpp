@@ -119,7 +119,7 @@ namespace monero_send_routine
 		return req_params_ss.str();
 	}
 	LightwalletAPI_Req_GetRandomOuts new__req_params__get_random_outs( // used internally and by emscr async send impl
-		vector<SpendableOutput> &step1__using_outs
+		vector<SpendableOutput> &step1__using_outs, string from_asset_type
 	);
 	typedef std::function<void(
 		LightwalletAPI_Req_GetRandomOuts, // req_params - use these for making the request

@@ -88,7 +88,7 @@ LightwalletAPI_Req_GetUnspentOuts monero_send_routine::new__req_params__get_unsp
 	};
 }
 LightwalletAPI_Req_GetRandomOuts monero_send_routine::new__req_params__get_random_outs(
-	vector<SpendableOutput> &step1__using_outs
+	vector<SpendableOutput> &step1__using_outs, string from_asset_type
 ) {
 	vector<string> decoy_req__amounts;
 	string asset_type;
@@ -101,15 +101,11 @@ LightwalletAPI_Req_GetRandomOuts monero_send_routine::new__req_params__get_rando
 			amount_ss << using_out.amount;
 			decoy_req__amounts.push_back(amount_ss.str());
 		}
-
-		// spendable outs should all from same asset_type, so just take it from the first one in  loop
-		if (asset_type.empty())
-			asset_type = using_out.asset_type;
 	}
 	return LightwalletAPI_Req_GetRandomOuts{
 		decoy_req__amounts,
 		fixed_mixinsize() + 1, // count; Add one to mixin so we can skip real output key if necessary
-		asset_type
+		std::move(from_asset_type)
 	};
 }
 //
@@ -494,7 +490,7 @@ void _reenterable_construct_and_send_tx(
 	args.status_update_fn(fetchingDecoyOutputs);
 	//
 	args.get_random_outs_fn(
-		new__req_params__get_random_outs(step1_retVals.using_outs),
+		new__req_params__get_random_outs(step1_retVals.using_outs, args.from_asset_type),
 		get_random_outs_fn__cb_fn
 	);
 }
