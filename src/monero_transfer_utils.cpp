@@ -320,7 +320,7 @@ uint64_t convert_base_fee_to_source_asset_type(const uint64_t base_fee_orig, str
  	} else {
    		if (from_asset_type != to_asset_type) {
      		// Convert fee to xAsset
-			base_fee = get_xasset_amount(base_fee_orig,  from_asset_type, pr);
+			base_fee = get_xasset_amount(get_xusd_amount(base_fee_orig, "XHV", pr, false), from_asset_type, pr);
 	    }
 	}
 
