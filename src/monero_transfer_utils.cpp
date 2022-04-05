@@ -218,7 +218,7 @@ uint64_t get_xasset_amount(const uint64_t xusd_amount, const std::string asset_t
 	return (uint64_t)xasset_128;
 }
 //----------------------------------------------------------------------------------------------------
-uint64_t get_xusd_amount(const uint64_t amount, const std::string asset_type, offshore::pricing_record pr)
+uint64_t get_xusd_amount(const uint64_t amount, const std::string asset_type, offshore::pricing_record pr, bool onshore)
 { // borrowed from wallet2.cpp
 	boost::multiprecision::uint128_t amount_128 = amount;
 	boost::multiprecision::uint128_t exchange_128 =
@@ -237,6 +237,13 @@ uint64_t get_xusd_amount(const uint64_t amount, const std::string asset_type, of
 		asset_type == "XHV" ? pr.unused1 :
 		pr.unused1;
     if (asset_type == "XHV") {
+		 if (onshore) {
+          // Eliminate MA/spot advantage for onshore conversion
+          exchange_128 = std::max(pr.unused1, pr.xUSD);
+        } else {
+          // Eliminate MA/spot advantage for offshore conversion
+          exchange_128 = std::min(pr.unused1, pr.xUSD);
+        }
       boost::multiprecision::uint128_t xusd_128 = amount_128 * exchange_128;
       xusd_128 /= 1000000000000;
       return (uint64_t)xusd_128;
@@ -247,48 +254,24 @@ uint64_t get_xusd_amount(const uint64_t amount, const std::string asset_type, of
     }
 }
 //----------------------------------------------------------------------------------------------------
-uint64_t get_offshore_fee(uint64_t amount, uint32_t priority)
+uint64_t get_offshore_fee(uint64_t amount, uint32_t priority, use_fork_rules_fn_type use_fork_rules_fn)
 { // borrowed from wallet2.cpp
-	uint64_t fee_estimate = amount;
-	switch(priority) {
-		case 4:
-			fee_estimate /= 5; // 20% - "workday rush"
-			break;
-		case 3:
-			fee_estimate /= 10; // 10% "1-day rush"
-			break;
-		case 2:
-			fee_estimate /= 20; // 5% - "premium mint"
-			break;
-		default:
-			fee_estimate /= 500; // 0.2% - "standard mint"
-			break;
+	if (use_fork_rules_fn(HF_PER_OUTPUT_UNLOCK_VERSION, 0)) {
+		uint64_t fee_estimate = amount;
+		fee_estimate/=200;
+		return fee_estimate;
 	}
-
-	// Return the fee
-	return fee_estimate;
+	return 0;
 }
 //----------------------------------------------------------------------------------------------------
-uint64_t get_onshore_fee(uint64_t amount, uint32_t priority)
+uint64_t get_onshore_fee(uint64_t amount, uint32_t priority, use_fork_rules_fn_type use_fork_rules_fn)
 {
-	uint64_t fee_estimate = amount;
-	switch(priority) {
-		case 4:
-			fee_estimate /= 5; // 20% - "workday rush"
-			break;
-		case 3:
-			fee_estimate /= 10; // 10% "1-day rush"
-			break;
-		case 2:
-			fee_estimate /= 20; // 5% - "premium mint"
-			break;
-		default:
-			fee_estimate /= 500; // 0.2% - "standard mint"
-			break;
+	if (use_fork_rules_fn(HF_PER_OUTPUT_UNLOCK_VERSION, 0)) {
+		uint64_t fee_estimate = amount;
+		fee_estimate/=200;
+		return fee_estimate;
 	}
-
-	// Return the fee
-	return fee_estimate;
+	return 0;
 }
 //----------------------------------------------------------------------------------------------------
 uint64_t get_offshore_to_offshore_fee(uint64_t amount, uint32_t priority)
@@ -332,12 +315,12 @@ uint64_t convert_base_fee_to_source_asset_type(const uint64_t base_fee_orig, str
  	if (from_asset_type == "XHV") {
  	} else if (from_asset_type == "XUSD") {
 		if (from_asset_type != to_asset_type) {
-			base_fee = get_xusd_amount(base_fee_orig, "XHV", pr);
+			base_fee = get_xusd_amount(base_fee_orig, "XHV", pr, false);
 		}
  	} else {
    		if (from_asset_type != to_asset_type) {
      		// Convert fee to xAsset
-			base_fee = get_xasset_amount(get_xusd_amount(base_fee_orig, "XHV", pr), from_asset_type, pr);
+			base_fee = get_xasset_amount(base_fee_orig,  from_asset_type, pr);
 	    }
 	}
 
@@ -481,7 +464,7 @@ void monero_transfer_utils::send_step1__prepare_params_for_get_decoys(
 		sending_amount_in_source_currency = sending_amount;		
 	} else if (onshore) {
 		// Input amount is in XHV - convert to XUSD
-		sending_amount_in_source_currency = get_xusd_amount(sending_amount, to_asset_type, pr);
+		sending_amount_in_source_currency = get_xusd_amount(sending_amount, to_asset_type, pr, true);
 		THROW_WALLET_EXCEPTION_IF(sending_amount_in_source_currency == 0, error::wallet_internal_error, "Failed to convert sending_amount back to xUSD");
 	} else if (offshore_transfer) {
 		// Input amount is in XUSD - no conversion needed
@@ -543,8 +526,8 @@ void monero_transfer_utils::send_step1__prepare_params_for_get_decoys(
 
 	// Calculate the offshore fee
 	uint64_t total_for_offshore_fee = is_sweeping ? using_outs_amount : sending_amount_in_source_currency;
-	uint64_t offshore_fee = (offshore) ? get_offshore_fee(total_for_offshore_fee, simple_priority)
-		: (onshore) ? get_onshore_fee(total_for_offshore_fee, simple_priority)
+	uint64_t offshore_fee = (offshore) ? get_offshore_fee(total_for_offshore_fee, simple_priority, use_fork_rules_fn)
+		: (onshore) ? get_onshore_fee(total_for_offshore_fee, simple_priority, use_fork_rules_fn)
 		: (offshore_transfer) ? get_offshore_to_offshore_fee(total_for_offshore_fee, 4)
 		: (xusd_to_xasset) ? get_xusd_to_xasset_fee(total_for_offshore_fee, simple_priority, use_fork_rules_fn)
 		: (xasset_to_xusd) ? get_xasset_to_xusd_fee(total_for_offshore_fee, simple_priority, use_fork_rules_fn)
@@ -699,8 +682,8 @@ void monero_transfer_utils::send_step2__try_create_transaction(
           xasset_to_xusd = true;
         }
 	}
-	uint64_t offshore_fee = (offshore) ? get_offshore_fee(final_total_wo_fee, simple_priority)
-		: (onshore) ? get_onshore_fee(final_total_wo_fee, simple_priority)
+	uint64_t offshore_fee = (offshore) ? get_offshore_fee(final_total_wo_fee, simple_priority, use_fork_rules_fn)
+		: (onshore) ? get_onshore_fee(final_total_wo_fee, simple_priority, use_fork_rules_fn)
 		: (offshore_transfer) ? get_offshore_to_offshore_fee(final_total_wo_fee, 4)
 		: (xusd_to_xasset) ? get_xusd_to_xasset_fee(final_total_wo_fee, simple_priority, use_fork_rules_fn)
 		: (xasset_to_xusd) ? get_xasset_to_xusd_fee(final_total_wo_fee, simple_priority, use_fork_rules_fn)
@@ -970,17 +953,18 @@ void monero_transfer_utils::create_transaction(
 	cryptonote::tx_destination_entry change_dst = AUTO_VAL_INIT(change_dst);
 
 	to_dst.addr = to_addr.address;
+	to_dst.is_subaddress = to_addr.is_subaddress;
 	to_dst.asset_type = to_asset_type;
 	change_dst.asset_type = from_asset_type;
 
 	// set correct amounts on destination and change outputs
 	if (offshore) {
-		to_dst.amount_usd = get_xusd_amount(sending_amount_in_source_currency, from_asset_type, pr);
+		to_dst.amount_usd = get_xusd_amount(sending_amount_in_source_currency, from_asset_type, pr, false);
 		THROW_WALLET_EXCEPTION_IF(to_dst.amount_usd == 0, error::wallet_internal_error, "Failed to convert sending_amount_in_source_currency to xUSD");
 		to_dst.amount = sending_amount_in_source_currency;
 		change_dst.amount = change_amount;
 	} else if (onshore) {
-		to_dst.amount = get_xusd_amount(sending_amount_in_source_currency, from_asset_type, pr);
+		to_dst.amount = get_xusd_amount(sending_amount_in_source_currency, from_asset_type, pr, true);
 		THROW_WALLET_EXCEPTION_IF(to_dst.amount == 0, error::wallet_internal_error, "Failed to convert sending_amount back to xUSD");
 		to_dst.amount_usd = sending_amount_in_source_currency;
 		change_dst.amount_usd = change_amount;
@@ -993,7 +977,7 @@ void monero_transfer_utils::create_transaction(
 		to_dst.amount_usd = sending_amount_in_source_currency;
 		change_dst.amount_usd = change_amount;
 	} else if (xasset_to_xusd) {
-		to_dst.amount_usd = get_xusd_amount(sending_amount_in_source_currency, from_asset_type, pr);
+		to_dst.amount_usd = get_xusd_amount(sending_amount_in_source_currency, from_asset_type, pr, false);
 		THROW_WALLET_EXCEPTION_IF(to_dst.amount_usd == 0, error::wallet_internal_error, "Failed to convert sending_amount to xAsset");
 		to_dst.amount_xasset = sending_amount_in_source_currency;
 		change_dst.amount_xasset = change_amount;
@@ -1012,7 +996,6 @@ void monero_transfer_utils::create_transaction(
 	}
 	uint64_t needed_money = sending_amount_in_source_currency + change_amount + fee_amount;
 
-	to_dst.is_subaddress = to_addr.is_subaddress;
 	splitted_dsts.push_back(to_dst);
 	//
 	if (change_amount == 0) {
@@ -1025,6 +1008,7 @@ void monero_transfer_utils::create_transaction(
 			cryptonote::account_base dummy;
 			dummy.generate();
 			change_dst.addr = dummy.get_keys().m_account_address;
+			change_dst.asset_type = from_asset_type;
 			LOG_PRINT_L2("generated dummy address for 0 change");
 			splitted_dsts.push_back(change_dst);
 		}
@@ -1043,12 +1027,41 @@ void monero_transfer_utils::create_transaction(
 		retVals.errCode = needMoreMoneyThanFound; // TODO: return actual found_money and needed_money in generalized err params in return val
 		return;
 	}
+
+	// add a dummy 0 change to a random address, so that we can use sum of change
+  // outputs masks in the amount burnt verification instead of using only
+  // the real change mask. To prevent someone guesssing the indiviaul masks of outputs.
+  // Also add another dummy ouput that has the same asset type as dest asset type
+  // to hide the correlation between amount_minted and dest output
+  if (use_fork_rules_fn(HF_VERSION_HAVEN2, 0) && from_asset_type != to_asset_type) {
+    // add one for source
+    LOG_PRINT_L2("generating dummy address for 0 change in conversion tx");
+    cryptonote::tx_destination_entry change_dts_2 = AUTO_VAL_INIT(change_dts_2);
+    cryptonote::account_base dummy;
+    dummy.generate();
+    change_dts_2.amount = change_dts_2.amount_usd = change_dts_2.amount_xasset = 0;
+    change_dts_2.asset_type = from_asset_type;
+    change_dts_2.addr = dummy.get_keys().m_account_address;
+    LOG_PRINT_L2("generated dummy address for 0 change in conversion tx");
+    splitted_dsts.push_back(change_dts_2);
+
+    // add one for dest
+    LOG_PRINT_L2("generating dummy address for dest asset type in conversion tx");
+    dummy.generate();
+    change_dts_2.amount = change_dts_2.amount_usd = change_dts_2.amount_xasset = 0;
+    change_dts_2.asset_type = to_asset_type;
+    change_dts_2.addr = dummy.get_keys().m_account_address;
+    LOG_PRINT_L2("generated dummy address for dest asset type in conversion tx");
+    splitted_dsts.push_back(change_dts_2);
+  }
+
+
 	//
 	cryptonote::transaction tx;
 	crypto::secret_key tx_key;
 	std::vector<crypto::secret_key> additional_tx_keys;
 	transaction_type tx_type;
-	if (!get_tx_type(to_asset_type, from_asset_type, tx_type)) 
+	if (!get_tx_type(from_asset_type, to_asset_type, tx_type)) 
 	{
 		retVals.errCode = invalidAssetTypes;
 		return;
@@ -1059,7 +1072,7 @@ void monero_transfer_utils::create_transaction(
 	bool r = cryptonote::construct_tx_and_get_tx_key(
 		sender_account_keys, subaddresses,
 		sources, splitted_dsts, change_dst.addr, extra,
-		tx, tx_type, to_asset_type, from_asset_type, unlock_time, tx_key, additional_tx_keys,
+		tx, tx_type, from_asset_type, to_asset_type, unlock_time, tx_key, additional_tx_keys,
 		current_height - 1, pr, fees_version, hf_version, 
 		true, rct_config,
 		/*m_multisig ? &msout : */NULL
