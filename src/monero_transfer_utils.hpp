@@ -192,6 +192,7 @@ namespace monero_transfer_utils
 		vector<SpendableOutput> using_outs;
 		uint64_t using_fee;
 		uint64_t final_total_wo_fee;
+		uint64_t final_total_wo_fee_base_currency;
 		uint64_t change_amount;
 	};
 	void send_step1__prepare_params_for_get_decoys(
@@ -238,6 +239,7 @@ namespace monero_transfer_utils
 		const string &to_asset_type,
 		const optional<string>& payment_id_string,
 		uint64_t final_total_wo_fee, // this gets passed to create_transaction's 'sending_amount'
+		uint64_t final_total_wo_fee_base_currency, // this gets passed to create_transaction's 'sending_amount'
 		uint64_t change_amount,
 		uint64_t fee_amount,
 		uint32_t simple_priority,
@@ -276,6 +278,7 @@ namespace monero_transfer_utils
 		const string &to_asset_type,
 		const optional<string>& payment_id_string,
 		uint64_t sending_amount,
+		uint64_t sending_amount_base_currency,
 		uint64_t change_amount,
 		uint64_t fee_amount,
 		uint64_t simple_priority,
@@ -304,6 +307,7 @@ namespace monero_transfer_utils
 		const string &from_asset_type,
 		const string &to_asset_type,
 		uint64_t sending_amount,
+		uint64_t sending_amount_base_currency,
 		uint64_t change_amount,
 		uint64_t fee_amount,
 		uint64_t simple_priority,

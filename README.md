@@ -371,6 +371,7 @@ The values which must be passed between functions have (almost entirely) consist
 	* `change_amount: UInt64String` expressed in same currency as `from_asset_type`
 	* `using_outs: [UnspentOutput]` passable directly to step2
 	* `final_total_wo_fee: UInt64String` expressed in same currency as `from_asset_type`
+	* `final_total_wo_fee_base_currency: UInt64String` expressed in base curreny which is XHV for onshore/offshore, XUSD for xasset-exchanges and from_asset_type for transfers
 	
 
 ##### `send_step2__try_create_transaction`
@@ -383,6 +384,7 @@ The values which must be passed between functions have (almost entirely) consist
 	* `from_asset_type: String`
 	* `to_asset_type: String`
 	* `final_total_wo_fee: UInt64String` returned by step1
+	* `final_total_wo_fee_base_currency: UInt64String` returned by step1
 	* `change_amount: UInt64String` returned by step1
 	* `fee_amount: UInt64String` returned by step1
 	* `priority: UInt32String` of `1`–`4`

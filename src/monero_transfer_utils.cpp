@@ -548,7 +548,16 @@ void monero_transfer_utils::send_step1__prepare_params_for_get_decoys(
 	uint64_t total_wo_fee = is_sweeping
 		? /*now that we know outsAmount>needed_fee*/(using_outs_amount - needed_fee)
 		: sending_amount_in_source_currency;
+	
+	//we need to keep of value in base currency, 
+	//because in few cases we would have to invert the conversion again in upcoming steps
+	//its only needed where send_amount is not given in from_asset_type
+	// as sweeping is not allowed for onshore/xasset_to_xusd we are safe to refer to sending_amount
+	uint64_t total_wo_fee_base_currency = (onshore || xasset_to_xusd ) ? sending_amount : total_wo_fee;
+
 	retVals.final_total_wo_fee = total_wo_fee;
+	retVals.final_total_wo_fee_base_currency = total_wo_fee_base_currency;
+	//
 	//
 	uint64_t total_incl_fees;
 	if (is_sweeping) {
@@ -615,6 +624,7 @@ void monero_transfer_utils::send_step2__try_create_transaction(
 	const string &to_asset_type,
 	const optional<string>& payment_id_string,
 	uint64_t final_total_wo_fee,
+	uint64_t final_total_wo_fee_base_currency,
 	uint64_t change_amount,
 	uint64_t fee_amount,
 	uint32_t simple_priority,
@@ -638,7 +648,7 @@ void monero_transfer_utils::send_step2__try_create_transaction(
 		to_address_string, 
 		from_asset_type, to_asset_type,
 		payment_id_string,
-		final_total_wo_fee, change_amount, fee_amount, simple_priority,
+		final_total_wo_fee, final_total_wo_fee_base_currency, change_amount, fee_amount, simple_priority,
 		using_outs, mix_outs,
 		current_height, pr,
 		use_fork_rules_fn,
@@ -725,6 +735,7 @@ void monero_transfer_utils::create_transaction(
 	const string &from_asset_type,
 	const string &to_asset_type,
 	uint64_t sending_amount_in_source_currency,
+	uint64_t sending_amount_in_base_currency,
 	uint64_t change_amount,
 	uint64_t fee_amount,
 	uint64_t simple_priority,
@@ -942,10 +953,19 @@ void monero_transfer_utils::create_transaction(
         }
 	}
 	//
-    // adjust unlock time for offshore/onshore tx
-    if (offshore ||	onshore) {
-		unlock_time = ((simple_priority == 4) ? 180 : (simple_priority == 3) ? 720 : (simple_priority == 2) ? 1440 : 5040) + current_height;
-    }
+     if (use_fork_rules_fn(HF_PER_OUTPUT_UNLOCK_VERSION, 0)) {
+    // Long offshore lock, short onshore lock, no effect from priority
+    if (offshore) {
+      unlock_time = (nettype == cryptonote::TESTNET) ? TX_V6_OFFSHORE_UNLOCK_BLOCKS_TESTNET : TX_V6_OFFSHORE_UNLOCK_BLOCKS; // ~21 days
+	  unlock_time += current_height;
+	} else if (onshore) {
+      unlock_time = (nettype == cryptonote::TESTNET) ? TX_V6_ONSHORE_UNLOCK_BLOCKS_TESTNET : TX_V6_ONSHORE_UNLOCK_BLOCKS; // ~12 hours
+	  unlock_time += current_height;
+	} else if (xusd_to_xasset || xasset_to_xusd) {
+      unlock_time = (nettype == cryptonote::TESTNET) ? TX_V6_XASSET_UNLOCK_BLOCKS_TESTNET : TX_V6_XASSET_UNLOCK_BLOCKS; // ~48 hours
+	  unlock_time += current_height;
+	}
+  }
 	//
 	// TODO: if this is a multisig wallet, create a list of multisig signers we can use
 	std::vector<cryptonote::tx_destination_entry> splitted_dsts;
@@ -961,10 +981,10 @@ void monero_transfer_utils::create_transaction(
 	if (offshore) {
 		to_dst.amount_usd = get_xusd_amount(sending_amount_in_source_currency, from_asset_type, pr, false);
 		THROW_WALLET_EXCEPTION_IF(to_dst.amount_usd == 0, error::wallet_internal_error, "Failed to convert sending_amount_in_source_currency to xUSD");
-		to_dst.amount = sending_amount_in_source_currency;
+		to_dst.amount = sending_amount_in_base_currency;
 		change_dst.amount = change_amount;
 	} else if (onshore) {
-		to_dst.amount = get_xusd_amount(sending_amount_in_source_currency, from_asset_type, pr, true);
+		to_dst.amount = sending_amount_in_base_currency;
 		THROW_WALLET_EXCEPTION_IF(to_dst.amount == 0, error::wallet_internal_error, "Failed to convert sending_amount back to xUSD");
 		to_dst.amount_usd = sending_amount_in_source_currency;
 		change_dst.amount_usd = change_amount;
@@ -977,7 +997,7 @@ void monero_transfer_utils::create_transaction(
 		to_dst.amount_usd = sending_amount_in_source_currency;
 		change_dst.amount_usd = change_amount;
 	} else if (xasset_to_xusd) {
-		to_dst.amount_usd = get_xusd_amount(sending_amount_in_source_currency, from_asset_type, pr, false);
+		to_dst.amount_usd = sending_amount_in_base_currency;
 		THROW_WALLET_EXCEPTION_IF(to_dst.amount_usd == 0, error::wallet_internal_error, "Failed to convert sending_amount to xAsset");
 		to_dst.amount_xasset = sending_amount_in_source_currency;
 		change_dst.amount_xasset = change_amount;
@@ -1106,6 +1126,7 @@ void monero_transfer_utils::convenience__create_transaction(
 	const string &to_asset_type,
 	const optional<string>& payment_id_string,
 	uint64_t sending_amount_in_source_currency,
+	uint64_t sending_amount_in_base_currency,
 	uint64_t change_amount,
 	uint64_t fee_amount,
 	uint64_t simple_priority,
@@ -1184,7 +1205,7 @@ void monero_transfer_utils::convenience__create_transaction(
 		account_keys, subaddr_account_idx, subaddresses,
 		to_addr_info,
 		from_asset_type, to_asset_type,
-		sending_amount_in_source_currency, change_amount, fee_amount, simple_priority,
+		sending_amount_in_source_currency, sending_amount_in_base_currency, change_amount, fee_amount, simple_priority,
 		outputs, mix_outs,
 		extra, // TODO: move to after address
 		current_height, pr,

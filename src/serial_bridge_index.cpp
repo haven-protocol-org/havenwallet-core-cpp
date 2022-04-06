@@ -536,6 +536,7 @@ string serial_bridge::send_step1__prepare_params_for_get_decoys(const string &ar
 		root.put(ret_json_key__send__mixin(), RetVals_Transforms::str_from(retVals.mixin));
 		root.put(ret_json_key__send__using_fee(), RetVals_Transforms::str_from(retVals.using_fee));
 		root.put(ret_json_key__send__final_total_wo_fee(), RetVals_Transforms::str_from(retVals.final_total_wo_fee));
+		root.put(ret_json_key__send__final_total_wo_fee_base_currency(), RetVals_Transforms::str_from(retVals.final_total_wo_fee_base_currency));
 		root.put(ret_json_key__send__change_amount(), RetVals_Transforms::str_from(retVals.change_amount));
 		{
 			boost::property_tree::ptree using_outs_ptree;
@@ -646,6 +647,7 @@ string serial_bridge::send_step2__try_create_transaction(const string &args_stri
 		json_root.get<string>("to_asset_type"),
 		json_root.get_optional<string>("payment_id_string"),
 		stoull(json_root.get<string>("final_total_wo_fee")),
+		stoull(json_root.get<string>("final_total_wo_fee_base_currency")),
 		stoull(json_root.get<string>("change_amount")),
 		stoull(json_root.get<string>("fee_amount")),
 		stoul(json_root.get<string>("priority")),

@@ -407,6 +407,7 @@ void _reenterable_construct_and_send_tx(
 			args.to_asset_type,
 			args.payment_id_string,
 			step1_retVals.final_total_wo_fee,
+			step1_retVals.final_total_wo_fee_base_currency,
 			step1_retVals.change_amount,
 			step1_retVals.using_fee,
 			args.simple_priority,
