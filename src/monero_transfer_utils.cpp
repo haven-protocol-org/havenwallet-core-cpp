@@ -315,12 +315,12 @@ uint64_t convert_base_fee_to_source_asset_type(const uint64_t base_fee_orig, str
  	if (from_asset_type == "XHV") {
  	} else if (from_asset_type == "XUSD") {
 		if (from_asset_type != to_asset_type) {
-			base_fee = get_xusd_amount(base_fee_orig, "XHV", pr, false);
+			base_fee = get_xusd_amount(base_fee_orig, "XHV", pr, true);
 		}
  	} else {
    		if (from_asset_type != to_asset_type) {
      		// Convert fee to xAsset
-			base_fee = get_xasset_amount(get_xusd_amount(base_fee_orig, "XHV", pr, false), from_asset_type, pr);
+			base_fee = get_xasset_amount(get_xusd_amount(base_fee_orig, "XHV", pr, true), from_asset_type, pr);
 	    }
 	}
 
@@ -450,8 +450,10 @@ void monero_transfer_utils::send_step1__prepare_params_for_get_decoys(
 	const uint64_t fee_multiplier = get_fee_multiplier(simple_priority, default_priority(), get_fee_algorithm(use_fork_rules_fn), use_fork_rules_fn);
 	//
 	uint64_t attempt_at_min_fee;
+	//for conversions we will have two additional dummy destinations
+	uint64_t expected_dests = (from_asset_type != to_asset_type)? 4 : 2;
 	if (passedIn_attemptAt_fee == none) {
-		attempt_at_min_fee = estimate_fee(true/*use_per_byte_fee*/, true/*use_rct*/, 2/*est num inputs*/, fake_outs_count, 2, extra.size(), bulletproof, clsag, base_fee, fee_multiplier, fee_quantization_mask);
+		attempt_at_min_fee = estimate_fee(true/*use_per_byte_fee*/, true/*use_rct*/, expected_dests/*est num inputs*/, fake_outs_count, 2, extra.size(), bulletproof, clsag, base_fee, fee_multiplier, fee_quantization_mask);
 		// opted to do this instead of `const uint64_t min_fee = (fee_multiplier * base_fee * estimate_tx_size(use_rct, 1, fake_outs_count, 2, extra.size(), bulletproof));`
 		// TODO: estimate with 1 input or 2?
 	} else {
@@ -520,7 +522,7 @@ void monero_transfer_utils::send_step1__prepare_params_for_get_decoys(
 //	if (/*using_outs.size() > 1*/ && use_rct) { // FIXME? see original core js
 	uint64_t needed_fee = estimate_fee(
 		true/*use_per_byte_fee*/, use_rct,
-		retVals.using_outs.size(), fake_outs_count, /*tx.dsts.size()*/1+1, extra.size(),
+		retVals.using_outs.size(), fake_outs_count, expected_dests, extra.size(),
 		bulletproof, clsag, base_fee, fee_multiplier, fee_quantization_mask
 	);
 
@@ -581,7 +583,7 @@ void monero_transfer_utils::send_step1__prepare_params_for_get_decoys(
 			// Recalculate fee, total incl fees
 			needed_fee = estimate_fee(
 				true/*use_per_byte_fee*/, use_rct,
-				retVals.using_outs.size(), fake_outs_count, /*tx.dsts.size()*/1+1, extra.size(),
+				retVals.using_outs.size(), fake_outs_count, expected_dests, extra.size(),
 				bulletproof, clsag, base_fee, fee_multiplier, fee_quantization_mask
 			);
 			needed_fee += offshore_fee;
