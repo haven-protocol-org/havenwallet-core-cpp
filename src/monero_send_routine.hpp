@@ -236,6 +236,7 @@ namespace monero_send_routine
 		string from_asset_type;
 		string to_asset_type;
 		optional<string> payment_id_string;
+		optional<string> memo_string;
 		uint64_t sending_amount;
 		bool is_sweeping;
 		uint32_t simple_priority;

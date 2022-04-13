@@ -625,6 +625,7 @@ void monero_transfer_utils::send_step2__try_create_transaction(
 	const string &from_asset_type,
 	const string &to_asset_type,
 	const optional<string>& payment_id_string,
+	const optional<string>& memo_string,
 	uint64_t final_total_wo_fee,
 	uint64_t final_total_wo_fee_base_currency,
 	uint64_t change_amount,
@@ -649,7 +650,7 @@ void monero_transfer_utils::send_step2__try_create_transaction(
 		sec_viewKey_string, sec_spendKey_string,
 		to_address_string, 
 		from_asset_type, to_asset_type,
-		payment_id_string,
+		payment_id_string, memo_string,
 		final_total_wo_fee, final_total_wo_fee_base_currency, change_amount, fee_amount, simple_priority,
 		using_outs, mix_outs,
 		current_height, pr,
@@ -1127,6 +1128,7 @@ void monero_transfer_utils::convenience__create_transaction(
 	const string &from_asset_type,
 	const string &to_asset_type,
 	const optional<string>& payment_id_string,
+	const optional<string>& memo_string,
 	uint64_t sending_amount_in_source_currency,
 	uint64_t sending_amount_in_base_currency,
 	uint64_t change_amount,
@@ -1168,6 +1170,22 @@ void monero_transfer_utils::convenience__create_transaction(
 	}
 	//
 	std::vector<uint8_t> extra;
+	if (memo_string != none && memo_string->size() > 0) {
+
+		if (memo_string->size() > TX_EXTRA_MEMO_MAX_COUNT) {
+			retVals.errCode = memoSizeExceedsMaxCount;
+			return;
+		}
+
+		bool r = cryptonote::add_memo_to_tx_extra(extra, *memo_string);
+
+		if (!r) {
+			retVals.errCode = couldntAddMemoToTXExtra;
+			return;
+		}
+
+	}
+
 	CreateTransactionErrorCode tx_extra__code = _add_pid_to_tx_extra(payment_id_string, extra);
 	if (tx_extra__code != noError) {
 		retVals.errCode = tx_extra__code;

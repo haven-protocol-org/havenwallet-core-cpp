@@ -113,7 +113,9 @@ namespace monero_transfer_utils
 		enteredAmountTooLow				= 20,
 		cantGetDecryptedMaskFromRCTHex	= 21,
 		needMoreMoneyThanFound			= 90,
-		invalidAssetTypes				= 100
+		invalidAssetTypes				= 100,
+		memoSizeExceedsMaxCount         = 101,
+		couldntAddMemoToTXExtra			= 102
 	};
 	static inline string err_msg_from_err_code__create_transaction(CreateTransactionErrorCode code)
 	{
@@ -166,6 +168,11 @@ namespace monero_transfer_utils
 				return "Can't get decrypted mask from 'rct' hex";
 			case invalidAssetTypes:
 				return "Either asset type or exchange style is invalid";
+			case couldntAddMemoToTXExtra:
+				return "Couldn't add memo to tx extra";
+			case memoSizeExceedsMaxCount:
+				return "Size of memo string exceeds allowed count";
+				
 		}
 	}
 	//
@@ -238,6 +245,7 @@ namespace monero_transfer_utils
 		const string &from_asset_type,
 		const string &to_asset_type,
 		const optional<string>& payment_id_string,
+		const optional<string>& memo_string,
 		uint64_t final_total_wo_fee, // this gets passed to create_transaction's 'sending_amount'
 		uint64_t final_total_wo_fee_base_currency, // this gets passed to create_transaction's 'sending_amount'
 		uint64_t change_amount,
@@ -277,6 +285,7 @@ namespace monero_transfer_utils
 		const string &from_asset_type,
 		const string &to_asset_type,
 		const optional<string>& payment_id_string,
+		const optional<string>& memo_string,
 		uint64_t sending_amount,
 		uint64_t sending_amount_base_currency,
 		uint64_t change_amount,

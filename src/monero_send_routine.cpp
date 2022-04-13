@@ -318,6 +318,7 @@ struct _SendFunds_ConstructAndSendTx_Args
 	const string &from_asset_type;
 	const string &to_asset_type;
 	optional<string> payment_id_string;
+	optional<string> memo_string;
 	uint64_t sending_amount;
 	bool is_sweeping;
 	uint32_t simple_priority;
@@ -406,6 +407,7 @@ void _reenterable_construct_and_send_tx(
 			args.from_asset_type,
 			args.to_asset_type,
 			args.payment_id_string,
+			args.memo_string,
 			step1_retVals.final_total_wo_fee,
 			step1_retVals.final_total_wo_fee_base_currency,
 			step1_retVals.change_amount,
@@ -549,7 +551,7 @@ void monero_send_routine::async__send_funds(Async_SendFunds_Args args)
 		_reenterable_construct_and_send_tx(_SendFunds_ConstructAndSendTx_Args{
 			args.from_address_string, args.sec_viewKey_string, args.sec_spendKey_string,
 			args.to_address_string, args.from_asset_type, args.to_asset_type,
-			args.payment_id_string, usable__sending_amount, args.is_sweeping, args.simple_priority,
+			args.payment_id_string, args.memo_string, usable__sending_amount, args.is_sweeping, args.simple_priority,
 			args.get_random_outs_fn, args.submit_raw_tx_fn, args.status_update_fn, args.error_cb_fn, args.success_cb_fn,
 			args.unlock_time == none ? 0 : *(args.unlock_time),
 			args.nettype == none ? MAINNET : *(args.nettype),
