@@ -35,6 +35,7 @@
 
 #include <boost/optional.hpp>
 #include "serialization/binary_archive.h"
+
 #include "cryptonote_basic.h"
 #include "cryptonote_basic_impl.h"
 
@@ -213,6 +214,25 @@ namespace monero_wallet_utils
 		network_type nettype,
 		ComponentsFromSeed_RetVals &retVals
 	);
+	struct ComponentsFromKeyBuff_RetVals: RetVals_base
+	{
+		optional<ComponentsFromSeed> optl__val = boost::none;
+	};
+	bool address_and_keys_from_keys_buf(
+	const std::string &keys_buf, 
+	const epee::wipeable_string &password, 
+	network_type nettype,
+	ComponentsFromKeyBuff_RetVals &retVals);
+	  struct keys_file_data
+    {
+      crypto::chacha_iv iv;
+      std::string account_data;
+
+      BEGIN_SERIALIZE_OBJECT()
+        FIELD(iv)
+        FIELD(account_data)
+      END_SERIALIZE()
+    };
 }
 
 

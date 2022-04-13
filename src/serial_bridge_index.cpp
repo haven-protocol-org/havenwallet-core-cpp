@@ -221,6 +221,34 @@ string serial_bridge::address_and_keys_from_seed(const string &args_string)
 	//
 	return ret_json_from_root(root);
 }
+string serial_bridge::address_and_keys_from_keys_buf(const string &keys_buf, const string &args_string)
+{
+	boost::property_tree::ptree json_root;
+	if (!parsed_json_root(args_string, json_root)) {
+		// it will already have thrown an exception
+		return error_ret_json_from_message("Invalid JSON");
+	}
+	monero_wallet_utils::ComponentsFromKeyBuff_RetVals retVals;
+	bool r = monero_wallet_utils::address_and_keys_from_keys_buf(
+		keys_buf,json_root.get<string>("password_string"),
+		nettype_from_string(json_root.get<string>("nettype_string")),
+		retVals
+	);
+	bool did_error = retVals.did_error;
+	if (!r) {
+		return error_ret_json_from_message(*(retVals.err_string));
+	}
+	THROW_WALLET_EXCEPTION_IF(did_error, error::wallet_internal_error, "Illegal success flag but did_error");
+	//
+	boost::property_tree::ptree root;
+	root.put(ret_json_key__address_string(), (*(retVals.optl__val)).address_string);
+	root.put(ret_json_key__pub_viewKey_string(), epee::string_tools::pod_to_hex((*(retVals.optl__val)).pub_viewKey));
+	root.put(ret_json_key__sec_viewKey_string(), epee::string_tools::pod_to_hex((*(retVals.optl__val)).sec_viewKey));
+	root.put(ret_json_key__pub_spendKey_string(), epee::string_tools::pod_to_hex((*(retVals.optl__val)).pub_spendKey));
+	root.put(ret_json_key__sec_spendKey_string(), epee::string_tools::pod_to_hex((*(retVals.optl__val)).sec_spendKey));
+	//
+	return ret_json_from_root(root);
+}
 string serial_bridge::mnemonic_from_seed(const string &args_string)
 {
 	boost::property_tree::ptree json_root;
@@ -646,6 +674,7 @@ string serial_bridge::send_step2__try_create_transaction(const string &args_stri
 		json_root.get<string>("from_asset_type"),
 		json_root.get<string>("to_asset_type"),
 		json_root.get_optional<string>("payment_id_string"),
+		json_root.get_optional<string>("memo_string"),
 		stoull(json_root.get<string>("final_total_wo_fee")),
 		stoull(json_root.get<string>("final_total_wo_fee_base_currency")),
 		stoull(json_root.get<string>("change_amount")),

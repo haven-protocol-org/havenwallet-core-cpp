@@ -57,6 +57,7 @@ namespace serial_bridge
 	string newly_created_wallet(const string &args_string);
 	string are_equal_mnemonics(const string &args_string);
 	string address_and_keys_from_seed(const string &args_string); // aka legacy mymonero-core-js:create_address
+	string address_and_keys_from_keys_buf(const string &keys_buf, const string &args_string); 
 	string mnemonic_from_seed(const string &args_string);
 	string seed_and_keys_from_mnemonic(const string &args_string);
 	string validate_components_for_login(const string &args_string);
