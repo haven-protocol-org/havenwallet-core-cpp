@@ -34,8 +34,6 @@
 #include <boost/algorithm/string.hpp>
 #include "cryptonote_basic.h"
 #include "device/device.hpp"
-#include "serialization/binary_utils.h"
-#include "epee/include/storages/portable_storage_template_helper.h"
 #include "cryptonote_basic/account.h"
 #include "wallet_errors.h" // not crazy about including this but it's not that bad
 #include "keccak.h"
@@ -377,47 +375,46 @@ bool monero_wallet_utils::address_and_keys_from_keys_buf(
 	network_type nettype, 
 	ComponentsFromKeyBuff_RetVals &retVals)
 {
-	using json = nlohmann::json;
-	uint64_t kdf_rounds = 1;
-	retVals = {};
-	 // Decrypt the contents
-  	//rapidjson::Document json;
-  	keys_file_data keys_file_data;
-  	bool encrypted_secret_keys = false;
-  	bool r = ::serialization::parse_binary(keys_buf, keys_file_data);
-  	THROW_WALLET_EXCEPTION_IF(!r, error::wallet_internal_error, "internal error: failed to deserialize keys buffer");
-  	crypto::chacha_key key;
-  	crypto::generate_chacha_key(password.data(), password.size(), key, kdf_rounds);
-  	std::string account_data = "{\"key_data\":\"\\u0001\\u0011\\u0001\\u0001\\u0001\\u0001\\u0002\\u0001\\u0001\\b\\u0014m_creation_timestamp\\u0005\226\272\070b\\u0000\\u0000\\u0000\\u0000\\u0006m_keys\\f\\u0010\\u0011m_account_address\\f\\b\\u0012m_spend_public_key\\n\200\\u001A\\u0000)\310v\364\234S\323\060\\u0014;\333炐\247\264\341v\230\363\060\\u0017\272\317r)0`\204{\\u0011m_view_public_key\\n\200u7\275)f(\\u0019\324\\u001C\\u0013\270\366\221\177\\u0002\\u0011NDւ\270\253\357L\346̆X\260\362SG\\u000Fm_encryption_iv\\n \365V\\u001F|\310c\203\227\\u0012m_spend_secret_key\\n\200E\274\340m\231\241jy۔/\217.\277t\266\313\365+\223\373|\203\\u0012\\u001C\244mO\275͊\340\\u0011m_view_secret_key\\n\200NFrj?\264\\f\224\306\\u0013E\252R\214ex\277{o\216\\u0001\364\232\271\377\\u0002\277\\u000B\347\060l\203\",\"seed_language\":\"English\",\"key_on_device\":0,\"watch_only\":0,\"multisig\":0,\"multisig_threshold\":0,\"always_confirm_transfers\":1,\"print_ring_members\":0,\"store_tx_info\":1,\"default_mixin\":0,\"default_priority\":0,\"auto_refresh\":1,\"refresh_type\":1,\"refresh_height\":53409,\"confirm_non_default_ring_size\":1,\"ask_password\":2,\"min_output_count\":0,\"min_output_value\":0,\"default_decimal_point\":12,\"merge_destinations\":0,\"confirm_backlog\":1,\"confirm_backlog_threshold\":0,\"confirm_export_overwrite\":1,\"auto_low_priority\":1,\"nettype\":1,\"segregate_pre_fork_outputs\":1,\"key_reuse_mitigation2\":1,\"segregation_height\":0,\"ignore_fractional_outputs\":1,\"ignore_outputs_above\":18446744073709551615,\"ignore_outputs_below\":0,\"track_uses\":0,\"inactivity_lock_timeout\":90,\"setup_background_mining\":1,\"subaddress_lookahead_major\":50,\"subaddress_lookahead_minor\":200,\"original_keys_available\":0,\"export_format\":0,\"encrypted_secret_keys\":1,\"device_name\":\"\",\"device_derivation_path\":\"\",\"persistent_rpc_client_id\":0,\"auto_mine_for_rpc_payment\":-1.0,\"credits_target\":0}";
-  	//account_data.resize(keys_file_data.account_data.size());
-  	//crypto::chacha20(keys_file_data.account_data.data(), keys_file_data.account_data.size(), key, keys_file_data.iv, &account_data[0]);
-  	//if (json.Parse(account_data.c_str()).HasParseError() || !json.IsObject())
-    //	crypto::chacha8(keys_file_data.account_data.data(), keys_file_data.account_data.size(), key, keys_file_data.iv, &account_data[0]);
-  // The contents should be JSON if the wallet follows the new format.
-      // define parser callback
+// 	uint64_t kdf_rounds = 1;
+// 	retVals = {};
+// 	 // Decrypt the contents
+//   	//rapidjson::Document json;
+//   	keys_file_data keys_file_data;
+//   	bool encrypted_secret_keys = false;
+//   	bool r = ::serialization::parse_binary(keys_buf, keys_file_data);
+//   	THROW_WALLET_EXCEPTION_IF(!r, error::wallet_internal_error, "internal error: failed to deserialize keys buffer");
+//   	crypto::chacha_key key;
+//   	crypto::generate_chacha_key(password.data(), password.size(), key, kdf_rounds);
+//   	std::string account_data = "{\"key_data\":\"\\u0001\\u0011\\u0001\\u0001\\u0001\\u0001\\u0002\\u0001\\u0001\\b\\u0014m_creation_timestamp\\u0005\226\272\070b\\u0000\\u0000\\u0000\\u0000\\u0006m_keys\\f\\u0010\\u0011m_account_address\\f\\b\\u0012m_spend_public_key\\n\200\\u001A\\u0000)\310v\364\234S\323\060\\u0014;\333炐\247\264\341v\230\363\060\\u0017\272\317r)0`\204{\\u0011m_view_public_key\\n\200u7\275)f(\\u0019\324\\u001C\\u0013\270\366\221\177\\u0002\\u0011NDւ\270\253\357L\346̆X\260\362SG\\u000Fm_encryption_iv\\n \365V\\u001F|\310c\203\227\\u0012m_spend_secret_key\\n\200E\274\340m\231\241jy۔/\217.\277t\266\313\365+\223\373|\203\\u0012\\u001C\244mO\275͊\340\\u0011m_view_secret_key\\n\200NFrj?\264\\f\224\306\\u0013E\252R\214ex\277{o\216\\u0001\364\232\271\377\\u0002\277\\u000B\347\060l\203\",\"seed_language\":\"English\",\"key_on_device\":0,\"watch_only\":0,\"multisig\":0,\"multisig_threshold\":0,\"always_confirm_transfers\":1,\"print_ring_members\":0,\"store_tx_info\":1,\"default_mixin\":0,\"default_priority\":0,\"auto_refresh\":1,\"refresh_type\":1,\"refresh_height\":53409,\"confirm_non_default_ring_size\":1,\"ask_password\":2,\"min_output_count\":0,\"min_output_value\":0,\"default_decimal_point\":12,\"merge_destinations\":0,\"confirm_backlog\":1,\"confirm_backlog_threshold\":0,\"confirm_export_overwrite\":1,\"auto_low_priority\":1,\"nettype\":1,\"segregate_pre_fork_outputs\":1,\"key_reuse_mitigation2\":1,\"segregation_height\":0,\"ignore_fractional_outputs\":1,\"ignore_outputs_above\":18446744073709551615,\"ignore_outputs_below\":0,\"track_uses\":0,\"inactivity_lock_timeout\":90,\"setup_background_mining\":1,\"subaddress_lookahead_major\":50,\"subaddress_lookahead_minor\":200,\"original_keys_available\":0,\"export_format\":0,\"encrypted_secret_keys\":1,\"device_name\":\"\",\"device_derivation_path\":\"\",\"persistent_rpc_client_id\":0,\"auto_mine_for_rpc_payment\":-1.0,\"credits_target\":0}";
+//   	//account_data.resize(keys_file_data.account_data.size());
+//   	//crypto::chacha20(keys_file_data.account_data.data(), keys_file_data.account_data.size(), key, keys_file_data.iv, &account_data[0]);
+//   	//if (json.Parse(account_data.c_str()).HasParseError() || !json.IsObject())
+//     //	crypto::chacha8(keys_file_data.account_data.data(), keys_file_data.account_data.size(), key, keys_file_data.iv, &account_data[0]);
+//   // The contents should be JSON if the wallet follows the new format.
+//       // define parser callback
 
-	//const char *field_key_data = account_json["key_data"].get<std::string>().c_str();
-	//account_data = std::string(field_key_data, field_key_data + account_json["key_data"].get<std::string>().length());
-  	cryptonote::account_base account{};
-	r = epee::serialization::load_t_from_binary(account, account_data);
+// 	//const char *field_key_data = account_json["key_data"].get<std::string>().c_str();
+// 	//account_data = std::string(field_key_data, field_key_data + account_json["key_data"].get<std::string>().length());
+//   	cryptonote::account_base account{};
+// 	r = epee::serialization::load_t_from_binary(account, account_data);
 
-	if(!r) {
-		retVals.did_error = true;
-		retVals.err_string = "Can't log in via keyfile";
-		return false;
-	}
-	account.decrypt_keys(key);
+// 	if(!r) {
+// 		retVals.did_error = true;
+// 		retVals.err_string = "Can't log in via keyfile";
+// 		return false;
+// 	}
+// 	account.decrypt_keys(key);
 
-	const cryptonote::account_keys& keys = account.get_keys();
+// 	const cryptonote::account_keys& keys = account.get_keys();
 
-	retVals.optl__val = ComponentsFromSeed{
-		account.get_public_address_str(nettype),
-		//
-		keys.m_spend_secret_key,
-		keys.m_view_secret_key,
-		keys.m_account_address.m_spend_public_key,
-		keys.m_account_address.m_view_public_key,
-	};
+// 	retVals.optl__val = ComponentsFromSeed{
+// 		account.get_public_address_str(nettype),
+// 		//
+// 		keys.m_spend_secret_key,
+// 		keys.m_view_secret_key,
+// 		keys.m_account_address.m_spend_public_key,
+// 		keys.m_account_address.m_view_public_key,
+// 	};
 	return true;
 
    
